@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Home, PlusSquare, Search, User, Flame } from 'lucide-react';
@@ -9,7 +8,7 @@ export const Navbar: React.FC = () => {
   const isActive = (path: string) => location.pathname === path ? "text-brand-600" : "text-slate-400";
 
   return (
-    <nav className="fixed bottom-0 left-0 w-full bg-white border-t border-slate-200 pb-safe z-50 md:top-0 md:bottom-auto md:border-b md:border-t-0 shadow-[0_-1px_3px_rgba(0,0,0,0.05)]">
+    <nav className="fixed bottom-0 left-0 w-full bg-white border-t border-slate-200 pb-[env(safe-area-inset-bottom)] z-[90] md:top-0 md:bottom-auto md:border-b md:border-t-0 shadow-[0_-1px_3px_rgba(0,0,0,0.05)]">
       <div className="max-w-4xl mx-auto flex justify-around items-center h-16">
         <Link to="/" className={`flex flex-col items-center ${isActive('/')}`}>
           <Home size={24} />

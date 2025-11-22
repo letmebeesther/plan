@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { HashRouter as Router, Routes, Route } from 'react-router-dom';
 import { Navbar } from './components/Navbar';
@@ -17,18 +16,13 @@ import { getCurrentUser } from './services/authService';
 
 const App: React.FC = () => {
   const [showSplash, setShowSplash] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  // Lazy initialization for auth state to check synchronously on mount
+  const [isAuthenticated, setIsAuthenticated] = useState(() => !!getCurrentUser());
   const [showScrollTop, setShowScrollTop] = useState(false);
 
   useEffect(() => {
     // Initialize DB with demo data if empty
     initializeDemoData();
-
-    // Check Auth
-    const user = getCurrentUser();
-    if (user) {
-        setIsAuthenticated(true);
-    }
 
     // Splash Timer
     const timer = setTimeout(() => {

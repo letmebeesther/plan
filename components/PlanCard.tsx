@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plan, PlanStatus } from '../../types';
+import { Plan, PlanStatus } from '../types';
 import { Clock, MessageCircle, CheckCircle2, XCircle, ThumbsUp, ThumbsDown } from 'lucide-react';
 
 interface PlanCardProps {
@@ -30,9 +30,20 @@ export const PlanCard: React.FC<PlanCardProps> = ({ plan, minimal = false }) => 
     return () => clearInterval(timer);
   }, [plan.endDate, plan.status]);
 
-  const progress = plan.milestones.length > 0 
-    ? Math.round((plan.milestones.filter(m => m.isCompleted).length / plan.milestones.length) * 100) 
-    : 0;
+  // Weighted Progress Calculation
+  const calculateWeightedProgress = () => {
+      if (!plan.milestones || plan.milestones.length === 0) return 0;
+      const totalWeight = plan.milestones.reduce((sum, m) => sum + (m.weight || 2), 0);
+      if (totalWeight === 0) return 0;
+      
+      const completedWeight = plan.milestones
+        .filter(m => m.isCompleted)
+        .reduce((sum, m) => sum + (m.weight || 2), 0);
+        
+      return Math.round((completedWeight / totalWeight) * 100);
+  };
+
+  const progress = calculateWeightedProgress();
 
   const totalVotes = plan.votes.canDoIt + plan.votes.cannotDoIt;
   const successRate = totalVotes > 0 
@@ -40,8 +51,9 @@ export const PlanCard: React.FC<PlanCardProps> = ({ plan, minimal = false }) => 
     : 0;
 
   return (
-    <Link to={`/plan/${plan.id}`} className={`block bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-md transition-shadow group ${minimal ? 'w-64 flex-shrink-0' : 'w-full'}`}>
-      <div className="relative h-40 w-full overflow-hidden">
+    <div className={`relative block bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-md transition-shadow group ${minimal ? 'w-64 flex-shrink-0' : 'w-full'}`}>
+      {/* Card Image Area with Link to Plan Detail */}
+      <Link to={`/plan/${plan.id}`} className="block relative h-40 w-full overflow-hidden">
         <img src={plan.images[0]} alt={plan.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
         
         {/* Status Badge */}
@@ -54,12 +66,6 @@ export const PlanCard: React.FC<PlanCardProps> = ({ plan, minimal = false }) => 
            plan.status === PlanStatus.COMPLETED_FAIL ? <XCircle size={12} className="mr-1" /> :
            <Clock size={12} className="mr-1" />}
           {timeLeft}
-        </div>
-
-        {/* Profile */}
-        <div className="absolute bottom-2 left-2 flex items-center space-x-2 z-20">
-           <img src={plan.user.avatar} alt={plan.user.name} className="w-6 h-6 rounded-full border border-white shadow-sm" />
-           <span className="text-white text-xs font-medium drop-shadow-md shadow-black">{plan.user.name}</span>
         </div>
 
         {/* Vote Results Overlay (Yes/No) */}
@@ -76,9 +82,15 @@ export const PlanCard: React.FC<PlanCardProps> = ({ plan, minimal = false }) => 
         
         {/* Gradient Overlay */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-80 z-10"></div>
-      </div>
+      </Link>
+
+      {/* Profile Link (Separate from card click) */}
+      <Link to={`/profile/${plan.userId}`} className="absolute bottom-[calc(100%-9.5rem)] left-2 flex items-center space-x-2 z-20 group/profile">
+           <img src={plan.user.avatar} alt={plan.user.name} className="w-6 h-6 rounded-full border border-white shadow-sm group-hover/profile:scale-110 transition-transform" />
+           <span className="text-white text-xs font-medium drop-shadow-md shadow-black hover:underline decoration-white/50">{plan.user.name}</span>
+      </Link>
       
-      <div className="p-3">
+      <Link to={`/plan/${plan.id}`} className="block p-3">
         <div className="flex items-center justify-between mb-2">
             <h3 className="font-bold text-slate-800 line-clamp-1 text-sm md:text-base flex-1 mr-2">{plan.title}</h3>
         </div>
@@ -94,7 +106,7 @@ export const PlanCard: React.FC<PlanCardProps> = ({ plan, minimal = false }) => 
 
         <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden flex">
             {/* Progress Bar */}
-            <div className="bg-brand-500 h-full" style={{ width: `${progress}%` }}></div>
+            <div className="bg-brand-500 h-full transition-all duration-700" style={{ width: `${progress}%` }}></div>
         </div>
 
         <div className="flex items-center justify-between text-slate-400 text-xs mt-3 pt-2 border-t border-slate-50">
@@ -106,7 +118,7 @@ export const PlanCard: React.FC<PlanCardProps> = ({ plan, minimal = false }) => 
               {totalVotes}명
            </div>
         </div>
-      </div>
-    </Link>
+      </Link>
+    </div>
   );
 };

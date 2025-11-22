@@ -20,6 +20,8 @@ export interface User {
   name: string;
   avatar: string;
   bio: string;
+  followers: string[]; // User IDs
+  following: string[]; // User IDs
 }
 
 export interface Milestone {
@@ -27,12 +29,14 @@ export interface Milestone {
   title: string;
   dueDate: string; // ISO String
   isCompleted: boolean;
+  weight: number; // 1: Low, 2: Medium, 3: High importance
 }
 
 export interface ProgressLog {
   id: string;
   date: string;
-  intervalIndex: number; // 1 to 5
+  milestoneTitle: string; // Which milestone this log is for
+  image: string; // Evidence Photo (Base64 or URL)
   answers: {
     q1: string; // 힘들었던 것
     q2: string; // 예측하지 못했던 것
@@ -76,4 +80,19 @@ export interface Plan {
   likes: number;
   createdAt: string;
   verificationVoteStart?: string; // When the 2-day post-deadline vote starts
+}
+
+export interface GroupChallenge {
+  id: string;
+  title: string;
+  description: string;
+  image: string;
+  category: Category;
+  participants: {
+    user: User;
+    planId: string;
+    progress: number; // 0-100 (Weighted)
+    status: PlanStatus;
+    endDate: string;
+  }[];
 }

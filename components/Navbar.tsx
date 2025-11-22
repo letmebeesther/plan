@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, PlusSquare, Search, User, LayoutGrid } from 'lucide-react';
+import { Home, PlusSquare, Search, User, Flame } from 'lucide-react';
 
 export const Navbar: React.FC = () => {
   const location = useLocation();
@@ -24,8 +24,8 @@ export const Navbar: React.FC = () => {
           <span className="text-[10px] mt-1 font-medium">새 계획</span>
         </Link>
          <Link to="/categories" className={`flex flex-col items-center ${isActive('/categories')}`}>
-          <LayoutGrid size={24} />
-          <span className="text-[10px] mt-1 font-medium">카테고리</span>
+          <Flame size={24} />
+          <span className="text-[10px] mt-1 font-medium">새로운 도전</span>
         </Link>
         <Link to="/profile" className={`flex flex-col items-center ${isActive('/profile')}`}>
           <User size={24} />

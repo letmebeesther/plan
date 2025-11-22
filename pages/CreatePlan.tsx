@@ -1,12 +1,15 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Category, Milestone } from '../../types';
+
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { Category, Milestone } from '../types';
 import { suggestMilestones } from '../services/geminiService';
 import { createPlan } from '../services/planService';
+import { getCurrentUser } from '../services/authService';
 import { Wand2, Loader2, Trash2, Plus, ChevronLeft, CalendarClock } from 'lucide-react';
 
 export const CreatePlan: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [loadingAI, setLoadingAI] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   
@@ -17,8 +20,22 @@ export const CreatePlan: React.FC = () => {
     endDate: '',
     category: [] as Category[],
     hashtags: '',
-    milestones: Array(5).fill({ title: '', dueDate: '' }) as Omit<Milestone, 'id' | 'isCompleted'>[]
+    // Initialize with 5 items (Minimum requirement)
+    milestones: Array(5).fill({ title: '', dueDate: '', weight: 2 }) as Omit<Milestone, 'id' | 'isCompleted'>[]
   });
+
+  useEffect(() => {
+    // Check if there's state passed from navigation (e.g., from Category Recommendations)
+    if (location.state) {
+        const { title, category, description } = location.state as { title?: string; category?: Category; description?: string };
+        setFormData(prev => ({
+            ...prev,
+            title: title || prev.title,
+            description: description || prev.description,
+            category: category ? [category] : prev.category
+        }));
+    }
+  }, [location.state]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -32,7 +49,11 @@ export const CreatePlan: React.FC = () => {
     if (milestones.length > 0) {
         setFormData(prev => ({
             ...prev,
-            milestones: milestones.map((m: any) => ({ title: m.title, dueDate: m.dueDate }))
+            milestones: milestones.map((m: any) => ({ 
+              title: m.title, 
+              dueDate: m.dueDate, 
+              weight: m.weight || 2 // Use Suggested weight or default to 2
+            }))
         }));
     } else {
         alert("AI가 마일스톤을 생성하지 못했습니다. 직접 입력해주세요.");
@@ -41,13 +62,17 @@ export const CreatePlan: React.FC = () => {
   };
 
   const addMilestone = () => {
+    if (formData.milestones.length >= 50) {
+        alert("중간 목표는 최대 50개까지만 설정할 수 있습니다.");
+        return;
+    }
     setFormData(prev => ({
       ...prev,
-      milestones: [...prev.milestones, { title: '', dueDate: '' }]
+      milestones: [...prev.milestones, { title: '', dueDate: '', weight: 2 }]
     }));
   };
 
-  const updateMilestone = (index: number, field: string, value: string) => {
+  const updateMilestone = (index: number, field: string, value: any) => {
     const newMilestones = [...formData.milestones];
     (newMilestones[index] as any)[field] = value;
     setFormData(prev => ({ ...prev, milestones: newMilestones }));
@@ -55,7 +80,7 @@ export const CreatePlan: React.FC = () => {
 
   const removeMilestone = (index: number) => {
     if (formData.milestones.length <= 5) {
-      alert("진행 상황을 5단계로 보고해야 하므로 최소 5개의 마일스톤이 필요합니다.");
+      alert("진행 상황 관리를 위해 최소 5개의 마일스톤이 필요합니다.");
       return;
     }
     setFormData(prev => ({
@@ -66,8 +91,20 @@ export const CreatePlan: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const currentUser = getCurrentUser();
+    
+    if (!currentUser) {
+        alert("로그인이 필요합니다.");
+        navigate('/'); // Should trigger login flow in App.tsx
+        return;
+    }
+
     if (formData.milestones.length < 5) {
       alert("체계적인 진행 관리를 위해 최소 5개의 마일스톤이 필요합니다.");
+      return;
+    }
+    if (formData.milestones.length > 50) {
+      alert("중간 목표는 최대 50개까지만 설정 가능합니다.");
       return;
     }
 
@@ -78,17 +115,13 @@ export const CreatePlan: React.FC = () => {
             id: `m${Date.now()}-${idx}`,
             title: m.title,
             dueDate: m.dueDate,
-            isCompleted: false
+            isCompleted: false,
+            weight: Number(m.weight) || 2
         }));
 
         const planData = {
-            userId: 'current-user-id', // In a real auth app, get from auth context
-            user: { 
-                id: 'current-user-id', 
-                name: '익명 사용자', 
-                avatar: `https://picsum.photos/seed/${Date.now()}/100/100`, 
-                bio: '새로운 도전자' 
-            },
+            userId: currentUser.id,
+            user: currentUser,
             title: formData.title,
             description: formData.description,
             images: [`https://picsum.photos/seed/${formData.title}/800/400`], // Placeholder image
@@ -185,8 +218,9 @@ export const CreatePlan: React.FC = () => {
                             setFormData({...formData, category: [...formData.category, e.target.value as Category]})
                         }
                     }}
+                    value=""
                 >
-                    <option value="">카테고리 선택</option>
+                    <option value="" disabled>카테고리 선택</option>
                     {Object.values(Category).map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
                 <div className="flex flex-wrap gap-2 mb-4">
@@ -222,7 +256,7 @@ export const CreatePlan: React.FC = () => {
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                 <div>
                     <label className="block text-lg font-bold text-slate-800">중간 목표 (마일스톤)</label>
-                    <p className="text-xs text-slate-500 mt-1">전체 기간의 1/5 단위로 체크합니다.</p>
+                    <p className="text-xs text-slate-500 mt-1">전체 기간을 5~50단계로 나누고 중요도를 설정하세요.</p>
                 </div>
                 <button 
                     type="button"
@@ -237,28 +271,51 @@ export const CreatePlan: React.FC = () => {
             
             <div className="space-y-3">
                 {formData.milestones.map((ms, idx) => (
-                    <div key={idx} className="flex items-center space-x-2 bg-slate-50 p-3 rounded-xl border border-slate-100 hover:border-brand-200 transition-colors">
-                        <div className="w-8 h-8 rounded-full bg-brand-100 text-brand-600 flex items-center justify-center font-bold text-sm flex-shrink-0">
-                            {idx + 1}
+                    <div key={idx} className="flex flex-col md:flex-row md:items-center gap-2 bg-slate-50 p-3 rounded-xl border border-slate-100 hover:border-brand-200 transition-colors">
+                        <div className="flex items-center w-full md:w-auto">
+                            <div className="w-8 h-8 rounded-full bg-brand-100 text-brand-600 flex items-center justify-center font-bold text-sm flex-shrink-0 mr-3">
+                                {idx + 1}
+                            </div>
                         </div>
-                        <div className="flex-1">
-                            <input 
-                                type="text" 
-                                value={ms.title}
-                                onChange={(e) => updateMilestone(idx, 'title', e.target.value)}
-                                placeholder={`중간 목표 ${idx + 1} (예: 챕터 1-3 끝내기)`}
-                                className="w-full bg-transparent border-none focus:ring-0 p-0 text-sm font-medium text-slate-800 placeholder:text-slate-400 mb-1"
-                                required
-                            />
-                            <input 
-                                type="date" 
-                                value={ms.dueDate}
-                                onChange={(e) => updateMilestone(idx, 'dueDate', e.target.value)}
-                                className="bg-transparent text-xs text-slate-500 focus:outline-none"
-                                required
-                            />
+                        
+                        <div className="flex-1 grid grid-cols-1 md:grid-cols-12 gap-2 w-full">
+                            <div className="md:col-span-7">
+                                <input 
+                                    type="text" 
+                                    value={ms.title}
+                                    onChange={(e) => updateMilestone(idx, 'title', e.target.value)}
+                                    placeholder={`중간 목표 ${idx + 1} (예: 챕터 1-3 끝내기)`}
+                                    className="w-full bg-transparent border-b border-transparent focus:border-brand-300 focus:outline-none p-1 text-sm font-medium text-slate-800 placeholder:text-slate-400"
+                                    required
+                                />
+                            </div>
+                             <div className="md:col-span-3">
+                                <input 
+                                    type="date" 
+                                    value={ms.dueDate}
+                                    onChange={(e) => updateMilestone(idx, 'dueDate', e.target.value)}
+                                    className="w-full bg-transparent text-xs text-slate-500 focus:outline-none border-b border-transparent focus:border-brand-300 p-1"
+                                    required
+                                />
+                            </div>
+                            <div className="md:col-span-2">
+                                <select
+                                    value={ms.weight || 2}
+                                    onChange={(e) => updateMilestone(idx, 'weight', Number(e.target.value))}
+                                    className={`w-full text-xs font-bold p-1 rounded border focus:outline-none ${
+                                        (ms.weight || 2) === 3 ? 'bg-rose-50 text-rose-600 border-rose-200' :
+                                        (ms.weight || 2) === 2 ? 'bg-blue-50 text-blue-600 border-blue-200' :
+                                        'bg-slate-100 text-slate-500 border-slate-200'
+                                    }`}
+                                >
+                                    <option value={1}>중요도: 낮음</option>
+                                    <option value={2}>중요도: 보통</option>
+                                    <option value={3}>중요도: 높음</option>
+                                </select>
+                            </div>
                         </div>
-                        <button type="button" onClick={() => removeMilestone(idx)} className="text-slate-400 hover:text-red-500 p-2 rounded-full hover:bg-red-50 transition-colors">
+
+                        <button type="button" onClick={() => removeMilestone(idx)} className="text-slate-400 hover:text-red-500 p-2 rounded-full hover:bg-red-50 transition-colors self-end md:self-center">
                             <Trash2 size={16} />
                         </button>
                     </div>
@@ -268,9 +325,15 @@ export const CreatePlan: React.FC = () => {
             <button 
                 type="button" 
                 onClick={addMilestone}
-                className="mt-4 w-full py-3 border-2 border-dashed border-slate-200 rounded-xl text-slate-500 hover:border-brand-400 hover:text-brand-500 hover:bg-brand-50 transition-all flex justify-center items-center font-bold text-sm"
+                disabled={formData.milestones.length >= 50}
+                className={`mt-4 w-full py-3 border-2 border-dashed rounded-xl flex justify-center items-center font-bold text-sm transition-all ${
+                    formData.milestones.length >= 50 
+                    ? 'border-slate-100 text-slate-300 cursor-not-allowed' 
+                    : 'border-slate-200 text-slate-500 hover:border-brand-400 hover:text-brand-500 hover:bg-brand-50'
+                }`}
             >
-                <Plus size={18} className="mr-1" /> 목표 직접 추가
+                <Plus size={18} className="mr-1" /> 
+                {formData.milestones.length >= 50 ? '최대 개수(50개) 도달' : '목표 직접 추가'}
             </button>
           </div>
 

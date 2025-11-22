@@ -1,18 +1,23 @@
 
 import React, { useState, useEffect } from 'react';
 import { PlanCard } from '../components/PlanCard';
-import { Plan, PlanStatus } from '../../types';
-import { Trophy, Flame, ListFilter, Loader2, HelpCircle, X, BookOpen } from 'lucide-react';
-import { subscribeToAllPlans } from '../services/planService';
+import { Plan, PlanStatus, GroupChallenge } from '../types';
+import { Trophy, Flame, ListFilter, Loader2, HelpCircle, X, BookOpen, Users, ChevronRight } from 'lucide-react';
+import { subscribeToAllPlans, getGroupChallenges } from '../services/planService';
+import { Link } from 'react-router-dom';
 
 export const Home: React.FC = () => {
   const [filter, setFilter] = useState<'popular' | 'new'>('popular');
   const [plans, setPlans] = useState<Plan[]>([]);
+  const [groups, setGroups] = useState<GroupChallenge[]>([]);
   const [loading, setLoading] = useState(true);
   const [showGuide, setShowGuide] = useState(false);
 
   useEffect(() => {
     setLoading(true);
+    // Load Groups Async
+    getGroupChallenges().then(data => setGroups(data));
+
     // Use real-time subscription
     const unsubscribe = subscribeToAllPlans(filter, (updatedPlans) => {
       setPlans(updatedPlans);
@@ -24,7 +29,7 @@ export const Home: React.FC = () => {
 
   const successPlans = plans.filter(p => p.status === PlanStatus.COMPLETED_SUCCESS);
   const popularPlans = plans.filter(p => p.status === PlanStatus.ACTIVE && (p.votes.canDoIt + p.votes.cannotDoIt > 0)).slice(0, 5);
-  
+
   return (
     <div className="pb-24 bg-slate-50 min-h-screen">
       <header className="sticky top-0 bg-white/90 backdrop-blur-md z-40 border-b border-slate-200 px-4 py-3 shadow-sm">
@@ -71,6 +76,50 @@ export const Home: React.FC = () => {
               <div className="flex space-x-4 overflow-x-auto pb-4 scrollbar-hide -mx-4 px-4">
                   {popularPlans.map(plan => (
                       <PlanCard key={plan.id} plan={plan} minimal={true} />
+                  ))}
+              </div>
+          </section>
+        )}
+
+        {/* Challenge Together Section (Groups) */}
+        {groups.length > 0 && (
+          <section className="px-4">
+              <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center">
+                    <Users className="text-indigo-500 mr-2 fill-indigo-100" size={20} />
+                    <h2 className="text-lg font-bold text-slate-800">함께 도전하기</h2>
+                  </div>
+              </div>
+              <div className="flex space-x-4 overflow-x-auto pb-4 scrollbar-hide -mx-4 px-4">
+                  {groups.map(group => (
+                      <Link to={`/group/${group.id}`} key={group.id} className="flex-shrink-0 w-72 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden group relative">
+                           <div className="h-32 relative">
+                               <img src={group.image} className="w-full h-full object-cover" alt={group.title} />
+                               <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition-colors"></div>
+                               <div className="absolute top-2 right-2 bg-black/50 backdrop-blur-md text-white text-xs px-2 py-1 rounded-md font-bold">
+                                   {group.participants.length}명 참여중
+                               </div>
+                           </div>
+                           <div className="p-4">
+                               <h3 className="font-bold text-slate-800 mb-1 truncate">{group.title}</h3>
+                               <p className="text-xs text-slate-500 line-clamp-2 mb-3 h-8">{group.description}</p>
+                               
+                               <div className="flex items-center -space-x-2 mb-3">
+                                   {group.participants.slice(0, 4).map((p, i) => (
+                                       <img key={i} src={p.user.avatar} className="w-6 h-6 rounded-full border-2 border-white" alt={p.user.name} />
+                                   ))}
+                                   {group.participants.length > 4 && (
+                                       <div className="w-6 h-6 rounded-full bg-slate-100 border-2 border-white flex items-center justify-center text-[10px] font-bold text-slate-500">
+                                           +{group.participants.length - 4}
+                                       </div>
+                                   )}
+                               </div>
+                               
+                               <div className="flex items-center text-xs font-bold text-indigo-600">
+                                   참여하기 <ChevronRight size={14} />
+                               </div>
+                           </div>
+                      </Link>
                   ))}
               </div>
           </section>

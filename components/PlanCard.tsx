@@ -1,8 +1,8 @@
 
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plan, PlanStatus } from '../types';
-import { Clock, MessageCircle, CheckCircle2, XCircle, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { Plan, PlanStatus, VoteStats } from '../types';
+import { Clock, MessageCircle, CheckCircle2, XCircle, Star } from 'lucide-react';
 
 interface PlanCardProps {
   plan: Plan;
@@ -45,10 +45,19 @@ export const PlanCard: React.FC<PlanCardProps> = ({ plan, minimal = false }) => 
 
   const progress = calculateWeightedProgress();
 
-  const totalVotes = plan.votes.canDoIt + plan.votes.cannotDoIt;
-  const successRate = totalVotes > 0 
-    ? Math.round((plan.votes.canDoIt / totalVotes) * 100) 
-    : 0;
+  // Calculate Average Rating
+  const calculateRating = (votes: VoteStats) => {
+      const total = votes.star1 + votes.star2 + votes.star3 + votes.star4 + votes.star5;
+      if (total === 0) return { average: 0, count: 0 };
+      
+      const sum = (votes.star1 * 1) + (votes.star2 * 2) + (votes.star3 * 3) + (votes.star4 * 4) + (votes.star5 * 5);
+      return {
+          average: (sum / total).toFixed(1),
+          count: total
+      };
+  };
+  
+  const { average, count } = calculateRating(plan.votes);
 
   return (
     <div className={`relative block bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-md transition-shadow group ${minimal ? 'w-64 flex-shrink-0' : 'w-full'}`}>
@@ -68,15 +77,12 @@ export const PlanCard: React.FC<PlanCardProps> = ({ plan, minimal = false }) => 
           {timeLeft}
         </div>
 
-        {/* Vote Results Overlay (Yes/No) */}
+        {/* Vote Rating Overlay */}
         <div className="absolute bottom-2 right-2 z-20">
-            <div className="flex items-center bg-black/60 backdrop-blur-md rounded-lg overflow-hidden border border-white/10 shadow-lg p-0.5">
-                <div className="flex items-center px-2 py-0.5 text-green-400 text-[10px] font-extrabold border-r border-white/20">
-                    <ThumbsUp size={10} className="mr-1 fill-green-400" /> {plan.votes.canDoIt}
-                </div>
-                <div className="flex items-center px-2 py-0.5 text-red-400 text-[10px] font-extrabold">
-                    <ThumbsDown size={10} className="mr-1 fill-red-400" /> {plan.votes.cannotDoIt}
-                </div>
+            <div className="flex items-center bg-black/60 backdrop-blur-md rounded-lg overflow-hidden border border-white/10 shadow-lg px-2 py-0.5">
+                <Star size={10} className="mr-1 text-yellow-400 fill-yellow-400" />
+                <span className="text-white text-[10px] font-extrabold mr-1">{average}</span>
+                <span className="text-slate-400 text-[9px]">({count})</span>
             </div>
         </div>
         
@@ -99,8 +105,8 @@ export const PlanCard: React.FC<PlanCardProps> = ({ plan, minimal = false }) => 
         
         <div className="flex items-center justify-between text-xs mb-1">
             <span className="text-slate-400">달성률 {progress}%</span>
-            <span className={`font-bold ${successRate >= 50 ? 'text-brand-600' : 'text-slate-400'}`}>
-                성공예측 {successRate}%
+            <span className={`font-bold ${Number(average) >= 4.0 ? 'text-brand-600' : 'text-slate-400'}`}>
+                ★ {average} 점
             </span>
         </div>
 
@@ -114,8 +120,8 @@ export const PlanCard: React.FC<PlanCardProps> = ({ plan, minimal = false }) => 
             <span className="flex items-center"><MessageCircle size={14} className="mr-1" /> {plan.logs.length} 로그</span>
           </div>
            <div className="flex items-center text-slate-500">
-              <span className="bg-slate-100 px-1.5 py-0.5 rounded text-[10px] font-bold mr-1">투표</span>
-              {totalVotes}명
+              <span className="bg-slate-100 px-1.5 py-0.5 rounded text-[10px] font-bold mr-1">참여</span>
+              {count}명
            </div>
         </div>
       </Link>

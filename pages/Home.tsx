@@ -16,10 +16,8 @@ export const Home: React.FC = () => {
 
   useEffect(() => {
     setLoading(true);
-    // Load Groups Async
     getGroupChallenges().then(data => setGroups(data));
 
-    // Use real-time subscription
     const unsubscribe = subscribeToAllPlans(filter, (updatedPlans) => {
       setPlans(updatedPlans);
       setLoading(false);
@@ -29,7 +27,13 @@ export const Home: React.FC = () => {
   }, [filter]);
 
   const successPlans = plans.filter(p => p.status === PlanStatus.COMPLETED_SUCCESS);
-  const popularPlans = plans.filter(p => p.status === PlanStatus.ACTIVE && (p.votes.canDoIt + p.votes.cannotDoIt > 0)).slice(0, 5);
+  
+  // Calculate total votes helper for filtering
+  const getTotalVotes = (p: Plan) => {
+      return p.votes.star1 + p.votes.star2 + p.votes.star3 + p.votes.star4 + p.votes.star5;
+  };
+
+  const popularPlans = plans.filter(p => p.status === PlanStatus.ACTIVE && getTotalVotes(p) > 0).slice(0, 5);
 
   return (
     <div className="pb-24 bg-slate-50 min-h-screen">
@@ -44,7 +48,6 @@ export const Home: React.FC = () => {
                 <HelpCircle size={24} />
              </button>
              <Link to="/profile" className="w-9 h-9 rounded-full bg-slate-200 overflow-hidden border-2 border-white shadow-sm block">
-                 {/* Placeholder or User Avatar logic could be added here if needed, but profile is just a link */}
                  <div className="w-full h-full bg-brand-100 flex items-center justify-center text-brand-500">
                     <Users size={16}/>
                  </div>
@@ -55,7 +58,7 @@ export const Home: React.FC = () => {
 
       <main className="max-w-4xl mx-auto space-y-8 pt-6">
         
-        {/* Honor Hall Section - Show only if there are success stories */}
+        {/* Honor Hall Section */}
         {successPlans.length > 0 && (
           <section className="px-4">
               <div className="flex items-center mb-3">
@@ -85,7 +88,7 @@ export const Home: React.FC = () => {
           </section>
         )}
 
-        {/* Challenge Together Section (Groups) */}
+        {/* Challenge Together Section */}
         {groups.length > 0 && (
           <section className="px-4">
               <div className="flex items-center justify-between mb-3">
@@ -177,7 +180,7 @@ export const Home: React.FC = () => {
         </section>
       </main>
 
-      {/* Guide Modal */}
+      {/* Guide Modal (Content kept same) */}
       {showGuide && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
             <div className="bg-white rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl">
@@ -207,14 +210,14 @@ export const Home: React.FC = () => {
                         <div className="bg-brand-100 text-brand-600 font-bold rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0 mr-4">3</div>
                         <div>
                             <h4 className="font-bold text-slate-800 mb-1">커뮤니티 투표</h4>
-                            <p className="text-sm text-slate-600">다른 유저들은 당신의 계획과 로그를 보고 '성공 가능성'에 투표합니다. (예/아니오)</p>
+                            <p className="text-sm text-slate-600">다른 유저들은 당신의 계획과 로그를 보고 '성공 가능성'을 별점(1~5점)으로 평가합니다.</p>
                         </div>
                     </div>
                     <div className="flex items-start">
                         <div className="bg-brand-100 text-brand-600 font-bold rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0 mr-4">4</div>
                         <div>
                             <h4 className="font-bold text-slate-800 mb-1">최종 검증</h4>
-                            <p className="text-sm text-slate-600">마감일이 지나면 2일간 '최종 검증 투표'가 열립니다. 여기서 과반수의 인정을 받아야 명예의 전당(성공)에 오릅니다.</p>
+                            <p className="text-sm text-slate-600">마감일이 지나면 2일간 '최종 검증 투표'가 열립니다. 여기서 높은 평가를 받아야 명예의 전당(성공)에 오릅니다.</p>
                         </div>
                     </div>
                     <div className="bg-slate-50 p-4 rounded-xl text-center">

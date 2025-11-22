@@ -49,8 +49,11 @@ export interface ProgressLog {
 }
 
 export interface VoteStats {
-  canDoIt: number;
-  cannotDoIt: number;
+  star1: number;
+  star2: number;
+  star3: number;
+  star4: number;
+  star5: number;
 }
 
 export interface Comment {

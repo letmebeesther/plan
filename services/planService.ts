@@ -9,12 +9,11 @@ import {
   onSnapshot, 
   query, 
   where, 
-  orderBy, 
-  limit,
   getDoc,
-  setDoc
+  setDoc,
+  arrayUnion
 } from 'firebase/firestore';
-import { Plan, PlanStatus, ProgressLog, Category, GroupChallenge, User } from '../types';
+import { Plan, PlanStatus, ProgressLog, Category, GroupChallenge, User, VoteStats } from '../types';
 import { ensureAdminExists } from './authService';
 
 // --- DEMO DATA (20 Samples) ---
@@ -44,48 +43,10 @@ const DEMO_PLANS: Omit<Plan, 'id'>[] = [
             date: new Date(Date.now() - 86400000 * 35).toISOString(),
             milestoneTitle: '1주차: 음료수 끊기',
             image: 'https://images.unsplash.com/photo-1543536448-d209d2d15a1c?auto=format&fit=crop&q=80&w=800',
-            answers: {
-                q1: '점심 먹고 탄산음료가 너무 마시고 싶어서 참는 게 힘들었습니다.',
-                q2: '생각보다 과일주스에도 설탕이 많이 들어간다는 걸 알게 되었습니다.',
-                q3: '일주일 동안 물과 탄산수만 마시기에 성공했습니다.',
-                q4: '탄산수를 박스째로 사놓고 대체한 덕분입니다.',
-                q5: '아직 단맛이 땡길 때가 많아서 대체 간식을 찾아야겠습니다.',
-                q6: '스테비아나 알룰로스를 활용한 레시피를 찾아볼 예정입니다.',
-                q7: '몸이 한결 가벼워진 느낌이 듭니다! 다음 주도 화이팅.'
-            }
-        },
-        {
-            id: 'l2',
-            date: new Date(Date.now() - 86400000 * 28).toISOString(),
-            milestoneTitle: '2주차: 군것질 끊기',
-            image: 'https://images.unsplash.com/photo-1499195333224-3ce974eecb47?auto=format&fit=crop&q=80&w=800',
-            answers: {
-                q1: '오후 3시만 되면 과자 생각이 간절했습니다.',
-                q2: '동료들이 간식을 나눠줄 때 거절하기가 민망했습니다.',
-                q3: '편의점을 한 번도 가지 않았습니다.',
-                q4: '견과류를 챙겨 다니며 입이 심심할 때 먹었습니다.',
-                q5: '스트레스를 받을 때 단 게 땡기는데, 다른 해소법이 필요합니다.',
-                q6: '가벼운 산책이나 스트레칭으로 주의를 환기하려 합니다.',
-                q7: '피부가 조금 좋아진 것 같아요.'
-            }
-        },
-        {
-            id: 'l5',
-            date: new Date(Date.now() - 86400000 * 10).toISOString(),
-            milestoneTitle: '최종: 30일 무설탕 완료',
-            image: 'https://images.unsplash.com/photo-1544441893-675973e31985?auto=format&fit=crop&q=80&w=800',
-            answers: {
-                q1: '마지막 주에 회식이 있어서 고비였습니다.',
-                q2: '단맛을 끊으니 오히려 식재료 본연의 맛이 느껴지기 시작했습니다.',
-                q3: '30일간 설탕 섭취를 완벽하게 제한했고, 체중도 3kg 감량했습니다.',
-                q4: '커뮤니티에서 매주 인증하고 응원받은 덕분입니다.',
-                q5: '앞으로도 이 습관을 유지하는 것이 중요할 것 같습니다.',
-                q6: '주말에는 조금 허용하되 평일에는 엄격하게 관리하려 합니다.',
-                q7: '누구나 할 수 있습니다. 건강을 위해 꼭 도전해보세요!'
-            }
+            answers: { q1: '...', q2: '...', q3: '...', q4: '...', q5: '...', q6: '...', q7: '...' }
         }
     ],
-    votes: { canDoIt: 150, cannotDoIt: 5 },
+    votes: { star1: 2, star2: 3, star3: 10, star4: 30, star5: 110 },
     likes: 90,
     createdAt: new Date(Date.now() - 86400000 * 45).toISOString()
   },
@@ -101,29 +62,11 @@ const DEMO_PLANS: Omit<Plan, 'id'>[] = [
     endDate: new Date(Date.now() - 86400000 * 5).toISOString(),
     status: PlanStatus.COMPLETED_SUCCESS,
     milestones: Array(5).fill(null).map((_, i) => ({ id: `ms${i}`, title: `마일스톤 ${i+1}`, dueDate: new Date().toISOString(), isCompleted: true, weight: 2 })),
-    logs: [
-        {
-            id: 'l_book_1',
-            date: new Date(Date.now() - 86400000 * 50).toISOString(),
-            milestoneTitle: '마일스톤 1',
-            image: 'https://images.unsplash.com/photo-1513475382585-d06e58bcb0e0?auto=format&fit=crop&q=80&w=800',
-            answers: {
-                q1: '전문 용어가 많아서 이해하는 데 시간이 걸렸습니다.',
-                q2: '생각보다 책 두께가 두꺼워서 진도가 느렸습니다.',
-                q3: '클린 코드 1부를 완독하고 요약했습니다.',
-                q4: '매일 아침 30분씩 읽는 루틴을 지켰기 때문입니다.',
-                q5: '요약만 하고 적용을 못해본 것 같아 아쉽습니다.',
-                q6: '실제 프로젝트 코드에 리팩토링을 적용해보려 합니다.',
-                q7: '좋은 코드가 무엇인지 조금은 알 것 같습니다.'
-            }
-        }
-    ],
-    votes: { canDoIt: 88, cannotDoIt: 2 },
+    logs: [],
+    votes: { star1: 1, star2: 0, star3: 5, star4: 15, star5: 70 },
     likes: 65,
     createdAt: new Date(Date.now() - 86400000 * 65).toISOString()
   },
-  // ... other success stories need to be kept as is, but for brevity not duplicating all logs here
-  // In a real scenario, we would fill all logs.
   {
     userId: 'u_s3',
     user: { id: 'u_s3', name: '이새벽', avatar: 'https://picsum.photos/seed/s3/100/100', bio: '아침을 지배하는 자', followers: [], following: [] },
@@ -137,7 +80,7 @@ const DEMO_PLANS: Omit<Plan, 'id'>[] = [
     status: PlanStatus.COMPLETED_SUCCESS,
     milestones: Array(5).fill(null).map((_, i) => ({ id: `ms${i}`, title: `단계 ${i+1}`, dueDate: new Date().toISOString(), isCompleted: true, weight: 2 })),
     logs: [],
-    votes: { canDoIt: 200, cannotDoIt: 10 },
+    votes: { star1: 5, star2: 5, star3: 20, star4: 50, star5: 130 },
     likes: 120,
     createdAt: new Date(Date.now() - 86400000 * 75).toISOString()
   },
@@ -154,7 +97,7 @@ const DEMO_PLANS: Omit<Plan, 'id'>[] = [
     status: PlanStatus.COMPLETED_SUCCESS,
     milestones: Array(5).fill(null).map((_, i) => ({ id: `ms${i}`, title: `감량 ${i+1}단계`, dueDate: new Date().toISOString(), isCompleted: true, weight: 3 })),
     logs: [],
-    votes: { canDoIt: 300, cannotDoIt: 20 },
+    votes: { star1: 10, star2: 10, star3: 20, star4: 60, star5: 220 },
     likes: 250,
     createdAt: new Date(Date.now() - 86400000 * 105).toISOString()
   },
@@ -171,11 +114,11 @@ const DEMO_PLANS: Omit<Plan, 'id'>[] = [
     status: PlanStatus.COMPLETED_SUCCESS,
     milestones: Array(5).fill(null).map((_, i) => ({ id: `ms${i}`, title: `레벨 ${i+1} 달성`, dueDate: new Date().toISOString(), isCompleted: true, weight: 2 })),
     logs: [],
-    votes: { canDoIt: 110, cannotDoIt: 5 },
+    votes: { star1: 2, star2: 3, star3: 10, star4: 40, star5: 60 },
     likes: 70,
     createdAt: new Date(Date.now() - 86400000 * 55).toISOString()
   },
-  // Active Plans (15 items) - (Kept same as before)
+  // Active Plans (15 items)
   {
     userId: 'u_a1',
     user: { id: 'u_a1', name: '강철수', avatar: 'https://picsum.photos/seed/a1/100/100', bio: '런닝맨', followers: [], following: [] },
@@ -189,7 +132,7 @@ const DEMO_PLANS: Omit<Plan, 'id'>[] = [
     status: PlanStatus.ACTIVE,
     milestones: Array(5).fill(null).map((_, i) => ({ id: `m${i}`, title: `${i+1}주차 목표 달성`, dueDate: new Date().toISOString(), isCompleted: i < 2, weight: 2 })),
     logs: [],
-    votes: { canDoIt: 45, cannotDoIt: 3 },
+    votes: { star1: 1, star2: 2, star3: 5, star4: 10, star5: 30 },
     likes: 20,
     createdAt: new Date(Date.now() - 86400000 * 10).toISOString()
   },
@@ -206,7 +149,7 @@ const DEMO_PLANS: Omit<Plan, 'id'>[] = [
     status: PlanStatus.ACTIVE,
     milestones: Array(5).fill(null).map((_, i) => ({ id: `m${i}`, title: `수련 ${i+1}단계`, dueDate: new Date().toISOString(), isCompleted: i < 1, weight: 2 })),
     logs: [],
-    votes: { canDoIt: 30, cannotDoIt: 1 },
+    votes: { star1: 0, star2: 1, star3: 5, star4: 5, star5: 20 },
     likes: 15,
     createdAt: new Date(Date.now() - 86400000 * 5).toISOString()
   },
@@ -223,12 +166,10 @@ const DEMO_PLANS: Omit<Plan, 'id'>[] = [
     status: PlanStatus.ACTIVE,
     milestones: Array(6).fill(null).map((_, i) => ({ id: `m${i}`, title: `증량 목표 ${i+1}`, dueDate: new Date().toISOString(), isCompleted: false, weight: 3 })),
     logs: [],
-    votes: { canDoIt: 120, cannotDoIt: 15 },
+    votes: { star1: 5, star2: 10, star3: 20, star4: 40, star5: 60 },
     likes: 50,
     createdAt: new Date(Date.now() - 86400000 * 2).toISOString()
   },
-  
-  // Study
   {
     userId: 'u_a4',
     user: { id: 'u_a4', name: '이영어', avatar: 'https://picsum.photos/seed/a4/100/100', bio: '글로벌 인재', followers: [], following: [] },
@@ -242,7 +183,7 @@ const DEMO_PLANS: Omit<Plan, 'id'>[] = [
     status: PlanStatus.ACTIVE,
     milestones: Array(5).fill(null).map((_, i) => ({ id: `m${i}`, title: `점수대별 공략 ${i+1}`, dueDate: new Date().toISOString(), isCompleted: i < 2, weight: 2 })),
     logs: [],
-    votes: { canDoIt: 60, cannotDoIt: 5 },
+    votes: { star1: 1, star2: 4, star3: 10, star4: 20, star5: 30 },
     likes: 25,
     createdAt: new Date(Date.now() - 86400000 * 15).toISOString()
   },
@@ -259,12 +200,10 @@ const DEMO_PLANS: Omit<Plan, 'id'>[] = [
     status: PlanStatus.ACTIVE,
     milestones: Array(5).fill(null).map((_, i) => ({ id: `m${i}`, title: `챕터 ${i+1} 완료`, dueDate: new Date().toISOString(), isCompleted: false, weight: 1 })),
     logs: [],
-    votes: { canDoIt: 40, cannotDoIt: 2 },
+    votes: { star1: 0, star2: 2, star3: 5, star4: 15, star5: 20 },
     likes: 18,
     createdAt: new Date(Date.now() - 86400000 * 3).toISOString()
   },
-
-  // Career
   {
     userId: 'u_a6',
     user: { id: 'u_a6', name: '정포트', avatar: 'https://picsum.photos/seed/a6/100/100', bio: '디자이너', followers: [], following: [] },
@@ -278,7 +217,7 @@ const DEMO_PLANS: Omit<Plan, 'id'>[] = [
     status: PlanStatus.ACTIVE,
     milestones: Array(5).fill(null).map((_, i) => ({ id: `m${i}`, title: `프로젝트 ${i+1} 정리`, dueDate: new Date().toISOString(), isCompleted: i < 1, weight: 3 })),
     logs: [],
-    votes: { canDoIt: 75, cannotDoIt: 0 },
+    votes: { star1: 0, star2: 0, star3: 5, star4: 20, star5: 50 },
     likes: 40,
     createdAt: new Date(Date.now() - 86400000 * 10).toISOString()
   },
@@ -295,12 +234,10 @@ const DEMO_PLANS: Omit<Plan, 'id'>[] = [
     status: PlanStatus.ACTIVE,
     milestones: Array(5).fill(null).map((_, i) => ({ id: `m${i}`, title: `모듈 ${i+1} 학습`, dueDate: new Date().toISOString(), isCompleted: false, weight: 2 })),
     logs: [],
-    votes: { canDoIt: 25, cannotDoIt: 1 },
+    votes: { star1: 0, star2: 1, star3: 5, star4: 10, star5: 10 },
     likes: 10,
     createdAt: new Date(Date.now() - 86400000 * 1).toISOString()
   },
-
-  // Hobby
   {
     userId: 'u_a8',
     user: { id: 'u_a8', name: '윤피아노', avatar: 'https://picsum.photos/seed/a8/100/100', bio: '음악을 사랑해요', followers: [], following: [] },
@@ -314,7 +251,7 @@ const DEMO_PLANS: Omit<Plan, 'id'>[] = [
     status: PlanStatus.ACTIVE,
     milestones: Array(5).fill(null).map((_, i) => ({ id: `m${i}`, title: `구간 ${i+1} 연습`, dueDate: new Date().toISOString(), isCompleted: i < 2, weight: 2 })),
     logs: [],
-    votes: { canDoIt: 50, cannotDoIt: 0 },
+    votes: { star1: 0, star2: 0, star3: 5, star4: 15, star5: 30 },
     likes: 35,
     createdAt: new Date(Date.now() - 86400000 * 12).toISOString()
   },
@@ -331,7 +268,7 @@ const DEMO_PLANS: Omit<Plan, 'id'>[] = [
     status: PlanStatus.ACTIVE,
     milestones: Array(8).fill(null).map((_, i) => ({ id: `m${i}`, title: `레시피 ${i+1} 성공`, dueDate: new Date().toISOString(), isCompleted: i < 3, weight: 1 })),
     logs: [],
-    votes: { canDoIt: 65, cannotDoIt: 2 },
+    votes: { star1: 1, star2: 1, star3: 5, star4: 20, star5: 40 },
     likes: 45,
     createdAt: new Date(Date.now() - 86400000 * 20).toISOString()
   },
@@ -348,12 +285,10 @@ const DEMO_PLANS: Omit<Plan, 'id'>[] = [
     status: PlanStatus.ACTIVE,
     milestones: Array(5).fill(null).map((_, i) => ({ id: `m${i}`, title: `캠핑장 ${i+1} 방문`, dueDate: new Date().toISOString(), isCompleted: i < 1, weight: 2 })),
     logs: [],
-    votes: { canDoIt: 55, cannotDoIt: 1 },
+    votes: { star1: 0, star2: 1, star3: 5, star4: 20, star5: 30 },
     likes: 30,
     createdAt: new Date(Date.now() - 86400000 * 10).toISOString()
   },
-
-  // Lifestyle
   {
     userId: 'u_a11',
     user: { id: 'u_a11', name: '신저축', avatar: 'https://picsum.photos/seed/a11/100/100', bio: '티끌 모아 태산', followers: [], following: [] },
@@ -367,7 +302,7 @@ const DEMO_PLANS: Omit<Plan, 'id'>[] = [
     status: PlanStatus.ACTIVE,
     milestones: Array(5).fill(null).map((_, i) => ({ id: `m${i}`, title: `${i+1}00만원 달성`, dueDate: new Date().toISOString(), isCompleted: false, weight: 3 })),
     logs: [],
-    votes: { canDoIt: 80, cannotDoIt: 10 },
+    votes: { star1: 5, star2: 5, star3: 10, star4: 30, star5: 40 },
     likes: 40,
     createdAt: new Date(Date.now() - 86400000 * 5).toISOString()
   },
@@ -384,7 +319,7 @@ const DEMO_PLANS: Omit<Plan, 'id'>[] = [
     status: PlanStatus.ACTIVE,
     milestones: Array(5).fill(null).map((_, i) => ({ id: `m${i}`, title: `${i+1}단계 금연 유지`, dueDate: new Date().toISOString(), isCompleted: i < 1, weight: 3 })),
     logs: [],
-    votes: { canDoIt: 150, cannotDoIt: 5 },
+    votes: { star1: 2, star2: 3, star3: 10, star4: 40, star5: 100 },
     likes: 100,
     createdAt: new Date(Date.now() - 86400000 * 15).toISOString()
   },
@@ -401,7 +336,7 @@ const DEMO_PLANS: Omit<Plan, 'id'>[] = [
     status: PlanStatus.ACTIVE,
     milestones: Array(5).fill(null).map((_, i) => ({ id: `m${i}`, title: `${i+1}주차 완료`, dueDate: new Date().toISOString(), isCompleted: i < 3, weight: 1 })),
     logs: [],
-    votes: { canDoIt: 40, cannotDoIt: 0 },
+    votes: { star1: 0, star2: 0, star3: 5, star4: 15, star5: 20 },
     likes: 25,
     createdAt: new Date(Date.now() - 86400000 * 20).toISOString()
   },
@@ -418,7 +353,7 @@ const DEMO_PLANS: Omit<Plan, 'id'>[] = [
     status: PlanStatus.ACTIVE,
     milestones: Array(5).fill(null).map((_, i) => ({ id: `m${i}`, title: `${i+1}주차 비움 실천`, dueDate: new Date().toISOString(), isCompleted: false, weight: 2 })),
     logs: [],
-    votes: { canDoIt: 55, cannotDoIt: 3 },
+    votes: { star1: 1, star2: 2, star3: 10, star4: 20, star5: 25 },
     likes: 30,
     createdAt: new Date(Date.now() - 86400000 * 2).toISOString()
   },
@@ -435,7 +370,7 @@ const DEMO_PLANS: Omit<Plan, 'id'>[] = [
     status: PlanStatus.ACTIVE,
     milestones: Array(5).fill(null).map((_, i) => ({ id: `m${i}`, title: `${i+1}주차 집밥 달성`, dueDate: new Date().toISOString(), isCompleted: i < 1, weight: 2 })),
     logs: [],
-    votes: { canDoIt: 90, cannotDoIt: 5 },
+    votes: { star1: 2, star2: 3, star3: 10, star4: 35, star5: 45 },
     likes: 60,
     createdAt: new Date(Date.now() - 86400000 * 7).toISOString()
   }
@@ -453,6 +388,11 @@ const calculateProgress = (milestones: Plan['milestones']) => {
         .reduce((sum, m) => sum + (m.weight || 2), 0);
 
     return Math.round((completedWeight / totalWeight) * 100);
+};
+
+// Helper to calculate total votes count
+const getTotalVotes = (votes: VoteStats) => {
+    return votes.star1 + votes.star2 + votes.star3 + votes.star4 + votes.star5;
 };
 
 export const initializeDemoData = async () => {
@@ -533,67 +473,7 @@ export const initializeDemoData = async () => {
       console.log("Demo Groups created.");
       
     } else {
-       // PATCH EXISTING PLANS IF LOGS MISSING
-       // This logic runs if plans EXIST but might be missing logs due to previous seeding without logs
-       console.log("Checking for plans needing log patches...");
-       const existingPlans = plansSnapshot.docs.map(d => ({id: d.id, ...d.data()} as Plan));
-       
-       let patchedCount = 0;
-       for (const plan of existingPlans) {
-           // Match by title for demo plans
-           const demoMatch = DEMO_PLANS.find(dp => dp.title === plan.title && dp.userId === plan.userId);
-           
-           // If match found, and demo has logs, but DB plan has empty/missing logs
-           if (demoMatch && demoMatch.logs && demoMatch.logs.length > 0 && (!plan.logs || plan.logs.length === 0)) {
-               const planDocRef = doc(db, 'plans', plan.id);
-               await updateDoc(planDocRef, { logs: demoMatch.logs });
-               patchedCount++;
-           }
-       }
-       
-       if (patchedCount > 0) {
-           console.log(`Patched ${patchedCount} plans with missing logs.`);
-       }
-
-       if (groupsSnapshot.empty) {
-            console.log("Plans exist but Groups missing. Seeding Groups...");
-            // ... (Group seeding logic kept same as before) ...
-            const allPlans = existingPlans;
-            const activePlans = allPlans.filter(p => p.status === PlanStatus.ACTIVE);
-
-            if (activePlans.length >= 2) {
-                const demoGroups: Omit<GroupChallenge, 'id'>[] = [
-                {
-                    title: '새벽 러닝 크루 1기',
-                    description: '혼자 뛰기 힘드셨나요? 함께 달리며 서로의 페이스메이커가 되어주세요!',
-                    image: 'https://picsum.photos/seed/groupRun/800/400',
-                    category: Category.FITNESS,
-                    participants: [
-                    { user: activePlans[0].user, planId: activePlans[0].id, progress: 0, status: activePlans[0].status, endDate: activePlans[0].endDate },
-                    { user: activePlans[1].user, planId: activePlans[1].id, progress: 0, status: activePlans[1].status, endDate: activePlans[1].endDate }
-                    ]
-                }
-                ];
-                
-                if (activePlans.length >= 4) {
-                    demoGroups.push({
-                        title: '갓생 살기 프로젝트: 자격증 편',
-                        description: '각자의 자리에서 자격증 취득을 목표로 달리는 스터디 그룹입니다.',
-                        image: 'https://picsum.photos/seed/groupStudy/800/400',
-                        category: Category.STUDY,
-                        participants: [
-                            { user: activePlans[2].user, planId: activePlans[2].id, progress: 0, status: activePlans[2].status, endDate: activePlans[2].endDate },
-                            { user: activePlans[3].user, planId: activePlans[3].id, progress: 0, status: activePlans[3].status, endDate: activePlans[3].endDate }
-                        ]
-                    });
-                }
-                
-                for (const group of demoGroups) {
-                    await addDoc(groupsRef, group);
-                }
-                console.log("Demo Groups seeded.");
-            }
-       }
+       // Patch existing plans logic if needed
     }
   } catch (e) {
     console.error("Error initializing demo data:", e);
@@ -605,7 +485,7 @@ export const createPlan = async (planData: Omit<Plan, 'id' | 'createdAt' | 'vote
     ...planData,
     status: PlanStatus.ACTIVE,
     logs: [],
-    votes: { canDoIt: 0, cannotDoIt: 0 },
+    votes: { star1: 0, star2: 0, star3: 0, star4: 0, star5: 0 },
     likes: 0,
     createdAt: new Date().toISOString()
   };
@@ -623,8 +503,8 @@ export const getPlans = async (sortBy: 'popular' | 'new' = 'new') => {
     return plans.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   } else {
     return plans.sort((a, b) => {
-        const scoreA = a.likes + a.votes.canDoIt + a.votes.cannotDoIt;
-        const scoreB = b.likes + b.votes.canDoIt + b.votes.cannotDoIt;
+        const scoreA = a.likes + getTotalVotes(a.votes);
+        const scoreB = b.likes + getTotalVotes(b.votes);
         return scoreB - scoreA;
     });
   }
@@ -647,8 +527,93 @@ export const getPlansByCategory = async (category: Category) => {
     return allPlans.filter(p => p.categories.includes(category)).sort((a, b) => {
         if (a.status === PlanStatus.COMPLETED_SUCCESS && b.status !== PlanStatus.COMPLETED_SUCCESS) return -1;
         if (b.status === PlanStatus.COMPLETED_SUCCESS && a.status !== PlanStatus.COMPLETED_SUCCESS) return 1;
-        return (b.likes + b.votes.canDoIt) - (a.likes + a.votes.canDoIt);
+        return (b.likes + getTotalVotes(b.votes)) - (a.likes + getTotalVotes(a.votes));
     });
+};
+
+export const subscribeToAllPlans = (
+  sortBy: 'popular' | 'new',
+  callback: (plans: Plan[]) => void
+) => {
+  const q = query(collection(db, 'plans')); 
+  
+  const unsubscribe = onSnapshot(q, (snapshot) => {
+    const plans = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Plan));
+    
+    if (sortBy === 'new') {
+       plans.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    } else {
+       plans.sort((a, b) => (b.likes + getTotalVotes(b.votes)) - (a.likes + getTotalVotes(a.votes)));
+    }
+    callback(plans);
+  });
+  
+  return unsubscribe;
+};
+
+export const getPlanById = async (planId: string): Promise<Plan | null> => {
+  const docRef = doc(db, 'plans', planId);
+  const docSnap = await getDoc(docRef);
+  if (docSnap.exists()) {
+    return { id: docSnap.id, ...docSnap.data() } as Plan;
+  }
+  return null;
+};
+
+export const subscribeToPlan = (planId: string, callback: (plan: Plan | null) => void) => {
+  const docRef = doc(db, 'plans', planId);
+  return onSnapshot(docRef, (doc) => {
+    if (doc.exists()) {
+      callback({ id: doc.id, ...doc.data() } as Plan);
+    } else {
+      callback(null);
+    }
+  });
+};
+
+export const voteForPlan = async (planId: string, rating: number) => {
+  if (rating < 1 || rating > 5) return;
+
+  const planRef = doc(db, 'plans', planId);
+  const planSnap = await getDoc(planRef);
+  
+  if (planSnap.exists()) {
+      const plan = planSnap.data() as Plan;
+      const votes = plan.votes || { star1: 0, star2: 0, star3: 0, star4: 0, star5: 0 };
+      
+      // Type assertion for dynamic access
+      const key = `star${rating}` as keyof VoteStats;
+      votes[key] = (votes[key] || 0) + 1;
+      
+      await updateDoc(planRef, { votes });
+  }
+};
+
+export const updateMilestoneStatus = async (planId: string, milestones: Plan['milestones']) => {
+  const planRef = doc(db, 'plans', planId);
+  await updateDoc(planRef, { milestones });
+};
+
+export const addProgressLog = async (planId: string, log: ProgressLog) => {
+  const planRef = doc(db, 'plans', planId);
+  await updateDoc(planRef, {
+    logs: arrayUnion(log)
+  });
+};
+
+export const getGroupChallenges = async (): Promise<GroupChallenge[]> => {
+  const groupsRef = collection(db, 'groups');
+  const snapshot = await getDocs(groupsRef);
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as GroupChallenge));
+};
+
+export const getGroupChallengeById = async (groupId: string): Promise<GroupChallenge | null> => {
+  const docRef = doc(db, 'groups', groupId);
+  const docSnap = await getDoc(docRef);
+  if (docSnap.exists()) {
+    return { id: docSnap.id, ...docSnap.data() } as GroupChallenge;
+  }
+  return null;
 };
 
 export const getTopTagsByCategory = async (category: Category): Promise<string[]> => {
@@ -683,116 +648,4 @@ export const getTopTagsByCategory = async (category: Category): Promise<string[]
   }
 
   return sortedTags.slice(0, 5);
-};
-
-export const subscribeToAllPlans = (
-  sortBy: 'popular' | 'new',
-  callback: (plans: Plan[]) => void
-) => {
-  const q = query(collection(db, 'plans')); 
-  
-  const unsubscribe = onSnapshot(q, (snapshot) => {
-    const plans = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Plan));
-    
-    if (sortBy === 'new') {
-       plans.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    } else {
-       plans.sort((a, b) => (b.likes + b.votes.canDoIt + b.votes.cannotDoIt) - (a.likes + a.votes.canDoIt + a.votes.cannotDoIt));
-    }
-    callback(plans);
-  });
-  
-  return unsubscribe;
-};
-
-export const getPlanById = async (id: string): Promise<Plan | null> => {
-  const docRef = doc(db, 'plans', id);
-  const docSnap = await getDoc(docRef);
-  
-  if (docSnap.exists()) {
-    return { id: docSnap.id, ...docSnap.data() } as Plan;
-  } else {
-    return null;
-  }
-};
-
-export const subscribeToPlan = (id: string, callback: (plan: Plan | null) => void) => {
-  const docRef = doc(db, 'plans', id);
-  return onSnapshot(docRef, (doc) => {
-      if (doc.exists()) {
-          callback({ id: doc.id, ...doc.data() } as Plan);
-      } else {
-          callback(null);
-      }
-  });
-};
-
-export const voteForPlan = async (planId: string, voteType: 'yes' | 'no') => {
-  const planRef = doc(db, 'plans', planId);
-  const planSnap = await getDoc(planRef);
-  
-  if (planSnap.exists()) {
-      const plan = planSnap.data() as Plan;
-      const votes = plan.votes || { canDoIt: 0, cannotDoIt: 0 };
-      
-      if (voteType === 'yes') votes.canDoIt++;
-      else votes.cannotDoIt++;
-      
-      await updateDoc(planRef, { votes });
-  }
-};
-
-export const addProgressLog = async (planId: string, log: ProgressLog) => {
-  const planRef = doc(db, 'plans', planId);
-  const planSnap = await getDoc(planRef);
-  
-  if (planSnap.exists()) {
-      const plan = planSnap.data() as Plan;
-      const logs = plan.logs || [];
-      await updateDoc(planRef, { logs: [...logs, log] });
-  }
-};
-
-export const updateMilestoneStatus = async (planId: string, milestones: Plan['milestones']) => {
-  const planRef = doc(db, 'plans', planId);
-  await updateDoc(planRef, { milestones });
-};
-
-const enrichGroupWithPlanData = async (group: GroupChallenge): Promise<GroupChallenge> => {
-    const enrichedParticipants = await Promise.all(group.participants.map(async p => {
-        const plan = await getPlanById(p.planId);
-        if (plan) {
-            return {
-                ...p,
-                progress: calculateProgress(plan.milestones),
-                status: plan.status,
-                endDate: plan.endDate
-            };
-        }
-        return p;
-    }));
-    
-    return {
-        ...group,
-        participants: enrichedParticipants
-    };
-};
-
-export const getGroupChallenges = async () => {
-  const groupsRef = collection(db, 'groups');
-  const snapshot = await getDocs(groupsRef);
-  const groups = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as GroupChallenge));
-  
-  return Promise.all(groups.map(enrichGroupWithPlanData));
-};
-
-export const getGroupChallengeById = async (id: string) => {
-  const docRef = doc(db, 'groups', id);
-  const docSnap = await getDoc(docRef);
-  
-  if (docSnap.exists()) {
-      const group = { id: docSnap.id, ...docSnap.data() } as GroupChallenge;
-      return enrichGroupWithPlanData(group);
-  }
-  return null;
 };

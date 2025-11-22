@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Category, Milestone } from '../types';
+import { Category, Milestone } from '../../types';
 import { suggestMilestones } from '../services/geminiService';
 import { createPlan } from '../services/planService';
 import { Wand2, Loader2, Trash2, Plus, ChevronLeft, CalendarClock } from 'lucide-react';

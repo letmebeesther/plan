@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Plan, PlanStatus } from '../types';
+import { Plan, PlanStatus } from '../../types';
 import { Clock, CheckCircle, XCircle, MessageSquare, Share2, AlertTriangle, ChevronLeft, ThumbsUp, ThumbsDown, Loader2 } from 'lucide-react';
 import { LogModal } from '../components/LogModal';
 import { subscribeToPlan, voteForPlan, updateMilestoneStatus, addProgressLog } from '../services/planService';

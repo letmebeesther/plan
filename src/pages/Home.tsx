@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { PlanCard } from '../components/PlanCard';
-import { Plan, PlanStatus } from '../types';
+import { Plan, PlanStatus } from '../../types';
 import { Trophy, Flame, ListFilter, Loader2, HelpCircle, X, BookOpen } from 'lucide-react';
 import { subscribeToAllPlans } from '../services/planService';
 

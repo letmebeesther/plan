@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plan, PlanStatus } from '../types';
+import { Plan, PlanStatus } from '../../types';
 import { Clock, MessageCircle, CheckCircle2, XCircle, ThumbsUp, ThumbsDown } from 'lucide-react';
 
 interface PlanCardProps {

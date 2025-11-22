@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Search as SearchIcon, Loader2, X } from 'lucide-react';
-import { Category, Plan } from '../types';
+import { Category, Plan } from '../../types';
 import { subscribeToAllPlans } from '../services/planService';
 import { PlanCard } from '../components/PlanCard';
 

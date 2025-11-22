@@ -5,6 +5,7 @@ import { Plan, PlanStatus, GroupChallenge } from '../types';
 import { Trophy, Flame, ListFilter, Loader2, HelpCircle, X, BookOpen, Users, ChevronRight } from 'lucide-react';
 import { subscribeToAllPlans, getGroupChallenges } from '../services/planService';
 import { Link } from 'react-router-dom';
+import { HorizontalScroll } from '../components/HorizontalScroll';
 
 export const Home: React.FC = () => {
   const [filter, setFilter] = useState<'popular' | 'new'>('popular');
@@ -42,9 +43,12 @@ export const Home: React.FC = () => {
              >
                 <HelpCircle size={24} />
              </button>
-             <div className="w-9 h-9 rounded-full bg-slate-200 overflow-hidden border-2 border-white shadow-sm">
-                <img src="https://picsum.photos/100/100" alt="Profile" />
-             </div>
+             <Link to="/profile" className="w-9 h-9 rounded-full bg-slate-200 overflow-hidden border-2 border-white shadow-sm block">
+                 {/* Placeholder or User Avatar logic could be added here if needed, but profile is just a link */}
+                 <div className="w-full h-full bg-brand-100 flex items-center justify-center text-brand-500">
+                    <Users size={16}/>
+                 </div>
+             </Link>
           </div>
         </div>
       </header>
@@ -58,11 +62,11 @@ export const Home: React.FC = () => {
                   <Trophy className="text-yellow-500 mr-2 fill-yellow-500" size={20} />
                   <h2 className="text-lg font-bold text-slate-800">명예의 전당 (성공 사례)</h2>
               </div>
-              <div className="flex space-x-4 overflow-x-auto pb-4 scrollbar-hide -mx-4 px-4">
+              <HorizontalScroll>
                   {successPlans.map(plan => (
                       <PlanCard key={plan.id} plan={plan} minimal={true} />
                   ))}
-              </div>
+              </HorizontalScroll>
           </section>
         )}
 
@@ -73,11 +77,11 @@ export const Home: React.FC = () => {
                   <Flame className="text-red-500 mr-2 fill-red-500" size={20} />
                   <h2 className="text-lg font-bold text-slate-800">지금 핫한 도전 (인기글)</h2>
               </div>
-              <div className="flex space-x-4 overflow-x-auto pb-4 scrollbar-hide -mx-4 px-4">
+              <HorizontalScroll>
                   {popularPlans.map(plan => (
                       <PlanCard key={plan.id} plan={plan} minimal={true} />
                   ))}
-              </div>
+              </HorizontalScroll>
           </section>
         )}
 
@@ -90,9 +94,9 @@ export const Home: React.FC = () => {
                     <h2 className="text-lg font-bold text-slate-800">함께 도전하기</h2>
                   </div>
               </div>
-              <div className="flex space-x-4 overflow-x-auto pb-4 scrollbar-hide -mx-4 px-4">
+              <HorizontalScroll>
                   {groups.map(group => (
-                      <Link to={`/group/${group.id}`} key={group.id} className="flex-shrink-0 w-72 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden group relative">
+                      <Link to={`/group/${group.id}`} key={group.id} className="flex-shrink-0 w-72 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden group relative snap-start">
                            <div className="h-32 relative">
                                <img src={group.image} className="w-full h-full object-cover" alt={group.title} />
                                <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition-colors"></div>
@@ -121,7 +125,7 @@ export const Home: React.FC = () => {
                            </div>
                       </Link>
                   ))}
-              </div>
+              </HorizontalScroll>
           </section>
         )}
 

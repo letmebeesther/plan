@@ -17,7 +17,7 @@ const ADMIN_USER = {
     following: []
 };
 
-// Get current session from LocalStorage (Persists login state)
+// Get current session from LocalStorage (Persists login state only)
 export const getCurrentUser = (): User | null => {
   const stored = localStorage.getItem(SESSION_KEY);
   if (stored) {
@@ -65,7 +65,7 @@ export const login = async (email: string, password: string): Promise<{ success:
       const userDoc = querySnapshot.docs[0];
       const userData = userDoc.data();
 
-      // In a real app, use bcrypt for password hashing. Plain text here for demo simplicity.
+      // In a real app, use bcrypt. Plain text for demo.
       if (userData.password !== password) {
           return { success: false, message: "비밀번호가 일치하지 않습니다." };
       }
@@ -79,6 +79,8 @@ export const login = async (email: string, password: string): Promise<{ success:
           followers: userData.followers || [],
           following: userData.following || []
       };
+      
+      // Save session to local storage
       localStorage.setItem(SESSION_KEY, JSON.stringify(sessionUser));
       
       return { success: true, user: sessionUser };
@@ -104,7 +106,7 @@ export const register = async (email: string, password: string, name: string, bi
         const newUser = {
             id: newUserId,
             email,
-            password, // Note: Plain text for demo
+            password, 
             name,
             bio: bio || '새로운 도전자',
             avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${name}`,
@@ -112,9 +114,10 @@ export const register = async (email: string, password: string, name: string, bi
             following: []
         };
 
+        // Save to Firestore
         await setDoc(doc(db, 'users', newUserId), newUser);
 
-        // Auto login
+        // Auto login (Set session)
         const sessionUser: User = {
             id: newUser.id,
             name: newUser.name,
@@ -158,7 +161,7 @@ export const toggleFollow = async (currentUserId: string, targetUserId: string):
                 followers: arrayRemove(currentUserId)
             });
             
-            // Update session storage to reflect change immediately without fetch
+            // Update local session
             const session = getCurrentUser();
             if (session) {
                 session.following = session.following.filter(id => id !== targetUserId);
@@ -174,7 +177,7 @@ export const toggleFollow = async (currentUserId: string, targetUserId: string):
                 followers: arrayUnion(currentUserId)
             });
 
-            // Update session storage
+            // Update local session
             const session = getCurrentUser();
             if (session) {
                 session.following = [...(session.following || []), targetUserId];

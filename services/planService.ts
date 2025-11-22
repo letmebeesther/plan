@@ -11,7 +11,8 @@ import {
   where, 
   getDoc,
   setDoc,
-  arrayUnion
+  arrayUnion,
+  writeBatch
 } from 'firebase/firestore';
 import { Plan, PlanStatus, ProgressLog, Category, GroupChallenge, User, VoteStats } from '../types';
 import { ensureAdminExists } from './authService';
@@ -40,10 +41,18 @@ const DEMO_PLANS: Omit<Plan, 'id'>[] = [
     logs: [
         {
             id: 'l1',
-            date: new Date(Date.now() - 86400000 * 35).toISOString(),
-            milestoneTitle: '1주차: 음료수 끊기',
-            image: 'https://images.unsplash.com/photo-1543536448-d209d2d15a1c?auto=format&fit=crop&q=80&w=800',
-            answers: { q1: '...', q2: '...', q3: '...', q4: '...', q5: '...', q6: '...', q7: '...' }
+            date: new Date(Date.now() - 86400000 * 10).toISOString(),
+            milestoneTitle: '최종: 30일 무설탕 완료',
+            image: 'https://images.unsplash.com/photo-1490818387583-1baba5e638af?auto=format&fit=crop&q=80&w=800',
+            answers: { 
+                q1: '초반에 달달한 라떼를 못 마시는 게 가장 힘들었습니다.', 
+                q2: '생각보다 편의점에 설탕 없는 음식이 거의 없다는 것에 놀랐습니다.', 
+                q3: '피부가 눈에 띄게 좋아졌고, 아침에 일어날 때 개운합니다.', 
+                q4: '대체당(알룰로스)을 활용한 홈카페 레시피 덕분입니다.', 
+                q5: '앞으로는 과일의 당도 조금 조절해보려 합니다.', 
+                q6: '건강한 간식 도시락을 싸가지고 다닐 예정입니다.', 
+                q7: '여러분도 딱 2주만 참아보세요. 몸이 달라집니다!' 
+            }
         }
     ],
     votes: { star1: 2, star2: 3, star3: 10, star4: 30, star5: 110 },
@@ -62,7 +71,23 @@ const DEMO_PLANS: Omit<Plan, 'id'>[] = [
     endDate: new Date(Date.now() - 86400000 * 5).toISOString(),
     status: PlanStatus.COMPLETED_SUCCESS,
     milestones: Array(5).fill(null).map((_, i) => ({ id: `ms${i}`, title: `마일스톤 ${i+1}`, dueDate: new Date().toISOString(), isCompleted: true, weight: 2 })),
-    logs: [],
+    logs: [
+         {
+            id: 'l_book',
+            date: new Date(Date.now() - 86400000 * 5).toISOString(),
+            milestoneTitle: '마일스톤 5',
+            image: 'https://images.unsplash.com/photo-1517842645767-c639042777db?auto=format&fit=crop&q=80&w=800',
+            answers: { 
+                q1: '퇴근 후 피곤한 몸을 이끌고 책을 펴는 것.', 
+                q2: '책 내용이 생각보다 훨씬 깊고 어려웠습니다.', 
+                q3: '3권 모두 완독하고 블로그에 정리까지 마쳤습니다.', 
+                q4: '주말 아침 시간을 고정적으로 확보한 덕분입니다.', 
+                q5: '실제 코드에 적용해보는 연습이 더 필요합니다.', 
+                q6: '사내 스터디를 만들어 동료들과 리뷰해볼 생각입니다.', 
+                q7: '꾸준함이 결국 실력을 만듭니다.' 
+            }
+        }
+    ],
     votes: { star1: 1, star2: 0, star3: 5, star4: 15, star5: 70 },
     likes: 65,
     createdAt: new Date(Date.now() - 86400000 * 65).toISOString()
@@ -118,7 +143,7 @@ const DEMO_PLANS: Omit<Plan, 'id'>[] = [
     likes: 70,
     createdAt: new Date(Date.now() - 86400000 * 55).toISOString()
   },
-  // Active Plans (15 items)
+  // Active Plans (15 items) - Users a1 to a15
   {
     userId: 'u_a1',
     user: { id: 'u_a1', name: '강철수', avatar: 'https://picsum.photos/seed/a1/100/100', bio: '런닝맨', followers: [], following: [] },
@@ -376,20 +401,6 @@ const DEMO_PLANS: Omit<Plan, 'id'>[] = [
   }
 ];
 
-// Helper to calculate weighted progress
-const calculateProgress = (milestones: Plan['milestones']) => {
-    if (!milestones || milestones.length === 0) return 0;
-    
-    const totalWeight = milestones.reduce((sum, m) => sum + (m.weight || 2), 0); 
-    if (totalWeight === 0) return 0;
-
-    const completedWeight = milestones
-        .filter(m => m.isCompleted)
-        .reduce((sum, m) => sum + (m.weight || 2), 0);
-
-    return Math.round((completedWeight / totalWeight) * 100);
-};
-
 // Helper to calculate total votes count
 const getTotalVotes = (votes: VoteStats) => {
     return votes.star1 + votes.star2 + votes.star3 + votes.star4 + votes.star5;
@@ -397,13 +408,13 @@ const getTotalVotes = (votes: VoteStats) => {
 
 export const initializeDemoData = async () => {
   try {
-    // 1. Ensure Admin Account
+    console.log("Initializing Data...");
     await ensureAdminExists();
 
     const usersRef = collection(db, 'users');
     const usersSnapshot = await getDocs(usersRef);
 
-    // 2. Seed Users INDEPENDENTLY
+    // 1. Seed Users (Always check even if plans exist)
     if (usersSnapshot.size < 5) {
         console.log("Seeding Demo Users...");
         const usersToSeed: Record<string, User> = {};
@@ -413,9 +424,10 @@ export const initializeDemoData = async () => {
             }
         });
 
+        const batch = writeBatch(db);
         for (const [userId, user] of Object.entries(usersToSeed)) {
             const userDocRef = doc(db, 'users', userId);
-            await setDoc(userDocRef, {
+            batch.set(userDocRef, {
                 ...user,
                 email: `user${userId}@example.com`,
                 password: '1234',
@@ -423,6 +435,7 @@ export const initializeDemoData = async () => {
                 following: user.following || []
             });
         }
+        await batch.commit();
         console.log(`Seeded ${Object.keys(usersToSeed).length} Demo Users.`);
     }
 
@@ -430,20 +443,41 @@ export const initializeDemoData = async () => {
     const groupsRef = collection(db, 'groups');
     
     const plansSnapshot = await getDocs(plansRef);
-    const groupsSnapshot = await getDocs(groupsRef);
     
+    // 2. Seed Plans & Groups
     if (plansSnapshot.empty) {
       console.log("Seeding Demo Plans...");
       
-      // 3. Create Plans
-      const planIds: string[] = [];
-      for (const planData of DEMO_PLANS) {
-        const docRef = await addDoc(plansRef, { ...planData, createdAt: new Date().toISOString() }); 
-        planIds.push(docRef.id);
-      }
-      console.log(`Created ${planIds.length} demo plans.`);
+      const createdPlans: { originalIndex: number; id: string; plan: any }[] = [];
+      const batch = writeBatch(db);
 
-      // 4. Create Groups
+      DEMO_PLANS.forEach((planData, index) => {
+          const newDocRef = doc(plansRef); // Auto-generated ID
+          createdPlans.push({ originalIndex: index, id: newDocRef.id, plan: planData });
+          batch.set(newDocRef, { ...planData, createdAt: new Date().toISOString() });
+      });
+      
+      await batch.commit();
+      console.log(`Created ${createdPlans.length} demo plans.`);
+
+      // 3. Seed Groups using the new Plan IDs
+      // Map original DEMO_PLANS array indices to new Firestore IDs
+      const getPlanIdByIndex = (index: number) => {
+          const found = createdPlans.find(p => p.originalIndex === index);
+          return found ? found.id : null;
+      };
+
+      // Indices in DEMO_PLANS array corresponding to participants
+      // Run Crew: u_a1 (Index 5), u_a3 (Index 7) -> wait, u_a3 is index 7 (3대 500)? Let's use u_a1 and u_a12 (Run & Smoke)
+      const groupRunPlanId1 = getPlanIdByIndex(5); // u_a1 (Running)
+      const groupRunPlanId2 = getPlanIdByIndex(11); // u_a12 (Smoking - let's use u_a3 instead for fitness) -> Index 7
+
+      const groupStudyPlanId1 = getPlanIdByIndex(8); // u_a4 (Toeic)
+      const groupStudyPlanId2 = getPlanIdByIndex(11); // u_a7 (Marketing) -> Index 11 is Savings. Let's check array.
+      // u_a7 is index 11 (Marketing is index 11 in list? No.
+      // 0-4: Success (5)
+      // 5: u_a1, 6: u_a2, 7: u_a3, 8: u_a4, 9: u_a5, 10: u_a6, 11: u_a7
+      
       const demoGroups: Omit<GroupChallenge, 'id'>[] = [
         {
             title: '새벽 러닝 크루 1기',
@@ -451,8 +485,8 @@ export const initializeDemoData = async () => {
             image: 'https://picsum.photos/seed/groupRun/800/400',
             category: Category.FITNESS,
             participants: [
-                { user: DEMO_PLANS[5].user, planId: planIds[5], progress: 0, status: PlanStatus.ACTIVE, endDate: DEMO_PLANS[5].endDate }, 
-                { user: DEMO_PLANS[7].user, planId: planIds[7], progress: 0, status: PlanStatus.ACTIVE, endDate: DEMO_PLANS[7].endDate } 
+                { user: DEMO_PLANS[5].user, planId: groupRunPlanId1 || 'temp', progress: 0, status: PlanStatus.ACTIVE, endDate: DEMO_PLANS[5].endDate }, 
+                { user: DEMO_PLANS[7].user, planId: getPlanIdByIndex(7) || 'temp', progress: 0, status: PlanStatus.ACTIVE, endDate: DEMO_PLANS[7].endDate } 
             ]
         },
         {
@@ -461,8 +495,8 @@ export const initializeDemoData = async () => {
             image: 'https://picsum.photos/seed/groupStudy/800/400',
             category: Category.STUDY,
             participants: [
-                { user: DEMO_PLANS[8].user, planId: planIds[8], progress: 0, status: PlanStatus.ACTIVE, endDate: DEMO_PLANS[8].endDate },
-                { user: DEMO_PLANS[11].user, planId: planIds[11], progress: 0, status: PlanStatus.ACTIVE, endDate: DEMO_PLANS[11].endDate }
+                { user: DEMO_PLANS[8].user, planId: getPlanIdByIndex(8) || 'temp', progress: 0, status: PlanStatus.ACTIVE, endDate: DEMO_PLANS[8].endDate },
+                { user: DEMO_PLANS[11].user, planId: getPlanIdByIndex(11) || 'temp', progress: 0, status: PlanStatus.ACTIVE, endDate: DEMO_PLANS[11].endDate }
             ]
         }
       ];
@@ -472,8 +506,6 @@ export const initializeDemoData = async () => {
       }
       console.log("Demo Groups created.");
       
-    } else {
-       // Patch existing plans logic if needed
     }
   } catch (e) {
     console.error("Error initializing demo data:", e);
@@ -581,7 +613,6 @@ export const voteForPlan = async (planId: string, rating: number) => {
       const plan = planSnap.data() as Plan;
       const votes = plan.votes || { star1: 0, star2: 0, star3: 0, star4: 0, star5: 0 };
       
-      // Type assertion for dynamic access
       const key = `star${rating}` as keyof VoteStats;
       votes[key] = (votes[key] || 0) + 1;
       

@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Category, Milestone } from '../types';
-import { suggestMilestones } from '../services/geminiService';
+import { suggestMilestones, analyzeMilestoneAction } from '../services/geminiService';
 import { createPlan } from '../services/planService';
 import { getCurrentUser } from '../services/authService';
 import { Wand2, Loader2, Trash2, Plus, ChevronLeft, CalendarClock } from 'lucide-react';
@@ -110,14 +110,32 @@ export const CreatePlan: React.FC = () => {
 
     setSubmitting(true);
     try {
-        // Transform milestones to include proper ID and default status
-        const finalMilestones = formData.milestones.map((m, idx) => ({
-            id: `m${Date.now()}-${idx}`,
-            title: m.title,
-            dueDate: m.dueDate,
-            isCompleted: false,
-            weight: Number(m.weight) || 2
-        }));
+        // AI Analysis and Transformation
+        const analyzedMilestones = await Promise.all(
+          formData.milestones.map(async (m, idx) => {
+            let analysis = undefined;
+            // Only attempt analysis if there is a title
+            if (m.title.trim()) {
+              try {
+                const result = await analyzeMilestoneAction(m.title);
+                if (result) {
+                  analysis = result;
+                }
+              } catch (err) {
+                console.warn(`Analysis failed for milestone: ${m.title}`);
+              }
+            }
+
+            return {
+              id: `m${Date.now()}-${idx}`,
+              title: m.title,
+              dueDate: m.dueDate,
+              isCompleted: false,
+              weight: Number(m.weight) || 2,
+              analysis: analysis
+            };
+          })
+        );
 
         const planData = {
             userId: currentUser.id,
@@ -129,7 +147,7 @@ export const CreatePlan: React.FC = () => {
             hashtags: formData.hashtags.split(',').map(t => t.trim()).filter(t => t.length > 0),
             startDate: new Date(formData.startDate).toISOString(),
             endDate: new Date(formData.endDate).toISOString(),
-            milestones: finalMilestones,
+            milestones: analyzedMilestones,
         };
 
         await createPlan(planData);
@@ -342,8 +360,12 @@ export const CreatePlan: React.FC = () => {
             disabled={submitting}
             className="w-full py-4 bg-brand-600 text-white font-bold rounded-xl hover:bg-brand-700 transition-all shadow-xl shadow-brand-500/30 text-lg flex items-center justify-center disabled:opacity-70"
           >
-            {submitting ? <Loader2 className="animate-spin mr-2" /> : null}
-            도전 시작하기
+            {submitting ? (
+              <>
+                <Loader2 className="animate-spin mr-2" />
+                AI가 검증 방식을 설계 중...
+              </>
+            ) : "도전 시작하기"}
           </button>
         </form>
       </div>

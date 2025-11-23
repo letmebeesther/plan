@@ -1,14 +1,40 @@
+
 import React, { useState, useRef } from 'react';
 import { X, Camera, Upload, CheckCircle2, AlertCircle } from 'lucide-react';
+import { MilestoneAnalysis } from '../types';
 
 interface LogModalProps {
   isOpen: boolean;
   onClose: () => void;
   milestoneTitle: string;
+  milestoneAnalysis?: MilestoneAnalysis;
   onSubmit: (data: { image: string; answers: any }) => void;
 }
 
-export const LogModal: React.FC<LogModalProps> = ({ isOpen, onClose, milestoneTitle, onSubmit }) => {
+const ACTION_TYPE_MAP: Record<string, string> = {
+    movement: "이동/장소",
+    exercise: "운동/신체활동",
+    eating: "식사/섭취",
+    study: "공부/학습",
+    social: "소셜/대화",
+    creative: "창작 활동",
+    relaxation: "휴식/명상",
+    experience: "새로운 경험",
+    official_record: "공식 기록",
+    unknown: "기타"
+  };
+  
+const EVIDENCE_MAP: Record<string, string> = {
+    biometric_log: "생체 데이터",
+    gps_log: "GPS 위치",
+    sensor_behavior_log: "센서 감지",
+    digital_work_log: "디지털 로그",
+    voice_ai_log: "음성/대화 분석",
+    official_verification: "공식 인증서",
+    not_applicable: "사진 인증"
+};
+
+export const LogModal: React.FC<LogModalProps> = ({ isOpen, onClose, milestoneTitle, milestoneAnalysis, onSubmit }) => {
   const [answers, setAnswers] = useState({
       q1: '', q2: '', q3: '', q4: '', q5: '', q6: '', q7: ''
   });
@@ -75,6 +101,28 @@ export const LogModal: React.FC<LogModalProps> = ({ isOpen, onClose, milestoneTi
         </div>
         
         <form onSubmit={handleSubmit} className="p-6 space-y-8">
+            {/* AI Verification Guide */}
+            {milestoneAnalysis && (
+                <div className="p-4 bg-indigo-50 rounded-xl border border-indigo-100">
+                    <h4 className="text-sm font-bold text-indigo-900 mb-2 flex items-center">
+                        🤖 AI 인증 가이드
+                    </h4>
+                    <div className="flex flex-wrap gap-2 mb-2">
+                        <span className="text-xs bg-white text-indigo-700 px-2 py-1 rounded border border-indigo-200 font-bold">
+                            {ACTION_TYPE_MAP[milestoneAnalysis.action_type] || milestoneAnalysis.action_type}
+                        </span>
+                        {milestoneAnalysis.recommended_evidence.map(e => (
+                            <span key={e} className="text-xs bg-white text-slate-600 px-2 py-1 rounded border border-slate-200">
+                                {EVIDENCE_MAP[e] || e}
+                            </span>
+                        ))}
+                    </div>
+                    <p className="text-xs text-indigo-800 leading-relaxed font-medium">
+                        {milestoneAnalysis.notes}
+                    </p>
+                </div>
+            )}
+
             {/* Image Upload Section */}
             <div className="space-y-3">
                 <label className="block text-sm font-bold text-slate-700 flex items-center">

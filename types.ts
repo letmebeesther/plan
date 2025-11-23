@@ -24,12 +24,21 @@ export interface User {
   following: string[]; // User IDs
 }
 
+export interface MilestoneAnalysis {
+  action_type: string;
+  action_tags: string[];
+  required_biometrics: string[];
+  recommended_evidence: string[];
+  notes: string;
+}
+
 export interface Milestone {
   id: string;
   title: string;
   dueDate: string; // ISO String
   isCompleted: boolean;
   weight: number; // 1: Low, 2: Medium, 3: High importance
+  analysis?: MilestoneAnalysis; // Optional AI analysis
 }
 
 export interface ProgressLog {

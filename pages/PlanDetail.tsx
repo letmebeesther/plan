@@ -8,6 +8,29 @@ import { ViewLogModal } from '../components/ViewLogModal';
 import { subscribeToPlan, voteForPlan, updateMilestoneStatus, addProgressLog } from '../services/planService';
 import { getCurrentUser, toggleFollow, getUserById } from '../services/authService';
 
+const ACTION_TYPE_MAP: Record<string, string> = {
+  movement: "이동/장소",
+  exercise: "운동/신체활동",
+  eating: "식사/섭취",
+  study: "공부/학습",
+  social: "소셜/대화",
+  creative: "창작 활동",
+  relaxation: "휴식/명상",
+  experience: "새로운 경험",
+  official_record: "공식 기록",
+  unknown: "기타"
+};
+
+const EVIDENCE_MAP: Record<string, string> = {
+  biometric_log: "생체 데이터",
+  gps_log: "GPS 위치",
+  sensor_behavior_log: "센서 감지",
+  digital_work_log: "디지털 로그",
+  voice_ai_log: "음성/대화 분석",
+  official_verification: "공식 인증서",
+  not_applicable: "사진 인증"
+};
+
 export const PlanDetail: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -331,6 +354,24 @@ export const PlanDetail: React.FC = () => {
                                     </span>
                                 </div>
                                 <p className="text-xs text-slate-400">마감 예정: {m.dueDate ? new Date(m.dueDate).toLocaleDateString() : '미정'}</p>
+                                
+                                {m.analysis && (
+                                    <div className="mt-2.5 pt-2 border-t border-slate-100">
+                                        <div className="flex flex-wrap items-center gap-2 mb-1.5">
+                                            <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">
+                                                {ACTION_TYPE_MAP[m.analysis.action_type] || m.analysis.action_type}
+                                            </span>
+                                             {m.analysis.recommended_evidence.map((ev, i) => (
+                                                 <span key={i} className="text-[10px] text-slate-500 bg-white border border-slate-200 px-1.5 py-0.5 rounded flex items-center">
+                                                    {EVIDENCE_MAP[ev] || ev}
+                                                 </span>
+                                             ))}
+                                        </div>
+                                        <p className="text-[11px] text-slate-500 leading-snug">
+                                            💡 {m.analysis.notes}
+                                        </p>
+                                    </div>
+                                )}
                             </div>
                             
                             {!isVerificationPhase && (
@@ -338,19 +379,19 @@ export const PlanDetail: React.FC = () => {
                                     {m.isCompleted ? (
                                          <button 
                                             onClick={(e) => handleMilestoneClick(idx, e)}
-                                            className="text-xs border border-green-300 text-green-700 bg-white px-3 py-1.5 rounded-lg hover:bg-green-50 transition-colors font-bold flex items-center"
+                                            className="text-xs border border-green-300 text-green-700 bg-white px-3 py-1.5 rounded-lg hover:bg-green-50 transition-colors font-bold flex items-center ml-2"
                                          >
                                             <ImageIcon size={12} className="mr-1"/> 인증 보기
                                          </button>
                                     ) : isOwner ? (
                                          <button 
                                             onClick={(e) => handleMilestoneClick(idx, e)}
-                                            className="text-xs border border-brand-200 text-brand-600 bg-white px-3 py-1.5 rounded-lg hover:bg-brand-50 transition-colors font-bold"
+                                            className="text-xs border border-brand-200 text-brand-600 bg-white px-3 py-1.5 rounded-lg hover:bg-brand-50 transition-colors font-bold ml-2"
                                          >
                                             인증하기
                                          </button>
                                     ) : (
-                                         <div className="text-xs px-2 py-1 rounded-md font-bold border flex items-center bg-slate-50 text-slate-400 border-slate-200">
+                                         <div className="text-xs px-2 py-1 rounded-md font-bold border flex items-center bg-slate-50 text-slate-400 border-slate-200 ml-2">
                                             <Lock size={10} className="mr-1"/>잠김
                                          </div>
                                     )}
@@ -361,10 +402,9 @@ export const PlanDetail: React.FC = () => {
                 </div>
             )}
             
-            {/* Logs and Comments tabs (omitted for brevity, assuming identical logic) */}
+            {/* Logs and Comments tabs */}
             {activeTab === 'logs' && (
                 <div className="space-y-8">
-                     {/* ... same log display code ... */}
                      {(!plan.logs || plan.logs.length === 0) ? (
                          <div className="text-center py-16 text-slate-400 bg-white rounded-xl border border-slate-100 border-dashed">
                             <MessageSquare className="mx-auto mb-3 opacity-50" size={40} />
@@ -421,6 +461,7 @@ export const PlanDetail: React.FC = () => {
         isOpen={isLogModalOpen} 
         onClose={() => { setIsLogModalOpen(false); setSelectedMilestoneIndex(null); }} 
         milestoneTitle={selectedMilestoneIndex !== null ? plan.milestones[selectedMilestoneIndex].title : ''}
+        milestoneAnalysis={selectedMilestoneIndex !== null ? plan.milestones[selectedMilestoneIndex].analysis : undefined}
         onSubmit={handleLogSubmit}
       />
 

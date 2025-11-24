@@ -1,11 +1,12 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Plan, PlanStatus, ProgressLog } from '../types';
-import { Clock, CheckCircle, MessageSquare, Share2, AlertTriangle, ChevronLeft, Loader2, ImageIcon, Lock, Eye, UserPlus, UserCheck, Heart } from 'lucide-react';
+import { Clock, CheckCircle, MessageSquare, Share2, AlertTriangle, ChevronLeft, Loader2, ImageIcon, Lock, UserPlus, Heart, ShieldCheck, AlertCircle, X } from 'lucide-react';
 import { LogModal } from '../components/LogModal';
 import { ViewLogModal } from '../components/ViewLogModal';
-import { subscribeToPlan, toggleLikePlan, updateMilestoneStatus, addProgressLog } from '../services/planService';
+import { subscribeToPlan, toggleLikePlan, updateMilestoneStatus, addProgressLog, toggleLikeMilestone } from '../services/planService';
 import { getCurrentUser, toggleFollow, getUserById } from '../services/authService';
 
 const ACTION_TYPE_MAP: Record<string, string> = {
@@ -80,6 +81,14 @@ export const PlanDetail: React.FC = () => {
   const isVerificationPhase = plan.status === PlanStatus.VERIFICATION_PENDING;
   const isOwner = currentUser && plan.userId === currentUser.id;
   const isLiked = currentUser ? (plan.likedBy || []).includes(currentUser.id) : false;
+  
+  // Deadline & Grace Period Logic
+  const now = new Date();
+  const endDate = new Date(plan.endDate);
+  const timeLeftMs = endDate.getTime() - now.getTime();
+  const isExpired = timeLeftMs < 0;
+  const gracePeriodEnd = new Date(endDate.getTime() + (2 * 24 * 60 * 60 * 1000)); // 2 Days grace for Plan
+  const isInGracePeriod = isExpired && now < gracePeriodEnd;
 
   const handleLike = async () => {
     if (!currentUser) {
@@ -87,6 +96,14 @@ export const PlanDetail: React.FC = () => {
         return;
     }
     await toggleLikePlan(plan.id, currentUser.id);
+  };
+
+  const handleMilestoneLike = async (index: number, e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (!currentUser) return alert("로그인이 필요합니다.");
+      const milestone = plan.milestones[index];
+      if ((milestone.likes || 0) >= 5) return alert("마일스톤 당 최대 좋아요는 5개입니다.");
+      await toggleLikeMilestone(plan.id, index);
   };
 
   const handleFollowClick = async () => {
@@ -111,43 +128,47 @@ export const PlanDetail: React.FC = () => {
               setSelectedLog(log);
               setIsViewLogModalOpen(true);
           } else {
-              if (isOwner) {
-                   if(window.confirm("연동된 로그가 없습니다. 완료 상태를 취소하시겠습니까?")) {
-                     const updatedMilestones = [...plan.milestones];
-                     updatedMilestones[index].isCompleted = false;
-                     updateMilestoneStatus(plan.id, updatedMilestones);
-                   }
-              } else {
-                  alert("해당 목표의 상세 로그가 존재하지 않습니다.");
-              }
+               alert("해당 목표의 상세 로그가 존재하지 않습니다.");
           }
           return;
       }
 
-      if (!isOwner) return; 
+      if (!isOwner) return;
+      
+      // Check Grace Period for Milestone (1 Day)
+      const milestoneDueDate = new Date(milestone.dueDate);
+      const milestoneGraceEnd = new Date(milestoneDueDate.getTime() + (24 * 60 * 60 * 1000));
+      
+      if (now > milestoneGraceEnd) {
+          alert("유예 기간(1일)이 지나 이 목표는 인증할 수 없습니다.");
+          return;
+      }
 
       setSelectedMilestoneIndex(index);
       setIsLogModalOpen(true);
   };
 
-  const handleLogSubmit = async (data: { image: string, answers: any }) => {
+  const handleLogSubmit = async (data: { image: string, answers: any, verificationType: any }) => {
       if (selectedMilestoneIndex === null) return;
       if (!plan) return;
 
       try {
-          const milestoneTitle = plan.milestones[selectedMilestoneIndex].title;
+          const milestone = plan.milestones[selectedMilestoneIndex];
           
-          const newLog = {
+          const newLog: ProgressLog = {
               id: `l${Date.now()}`,
               date: new Date().toISOString(),
-              milestoneTitle: milestoneTitle,
+              milestoneTitle: milestone.title,
               image: data.image,
-              answers: data.answers
+              answers: data.answers,
+              verificationType: data.verificationType
           };
           await addProgressLog(plan.id, newLog);
 
           const updatedMilestones = [...plan.milestones];
           updatedMilestones[selectedMilestoneIndex].isCompleted = true;
+          updatedMilestones[selectedMilestoneIndex].verificationType = data.verificationType;
+          
           await updateMilestoneStatus(plan.id, updatedMilestones);
           
           setIsLogModalOpen(false);
@@ -197,28 +218,36 @@ export const PlanDetail: React.FC = () => {
                                 </button>
                             )}
                         </div>
-                        <p className="text-xs text-slate-300 font-light">{new Date(plan.createdAt).toLocaleDateString()} 시작</p>
+                        <p className="text-xs text-slate-300 font-light flex items-center">
+                            신뢰도 {plan.user.trustScore}% 
+                            {plan.user.isFaceVerified && <ShieldCheck size={10} className="ml-1 text-green-400" />}
+                        </p>
                     </div>
                 </div>
                 <h1 className="text-3xl font-bold mb-2 leading-tight">{plan.title}</h1>
                 <div className="flex items-center space-x-4 text-sm text-slate-300 mt-3">
-                    <span className="flex items-center bg-white/10 px-3 py-1 rounded-full backdrop-blur-sm border border-white/10">
-                        <Clock size={14} className="mr-1.5"/> 마감: {new Date(plan.endDate).toLocaleDateString()}
-                    </span>
-                    <button className="flex items-center hover:text-white transition-colors hover:bg-white/10 px-3 py-1 rounded-full">
-                        <Share2 size={16} className="mr-1.5"/> 공유하기
-                    </button>
+                    {isInGracePeriod ? (
+                        <span className="flex items-center bg-red-500/90 text-white px-3 py-1 rounded-full backdrop-blur-sm border border-white/10 font-bold animate-pulse">
+                            <AlertCircle size={14} className="mr-1.5"/> 종료 유예 기간 (D+2 이내)
+                        </span>
+                    ) : (
+                         <span className="flex items-center bg-white/10 px-3 py-1 rounded-full backdrop-blur-sm border border-white/10">
+                            <Clock size={14} className="mr-1.5"/> {isExpired ? "종료됨" : `마감: ${new Date(plan.endDate).toLocaleDateString()}`}
+                        </span>
+                    )}
+                   
                     <div className="flex items-center text-rose-300">
                         <Heart size={16} className="mr-1.5 fill-rose-300" /> {plan.likes}
                     </div>
                 </div>
+                {isInGracePeriod && <p className="text-xs text-red-300 mt-1">* 유예 기간 종료 시 실패 처리됩니다.</p>}
             </div>
         </div>
       </div>
 
       <main className="max-w-6xl mx-auto px-4 py-6 -mt-8 relative z-10">
         
-        {/* Support Section (Replaces Voting) */}
+        {/* Support Section */}
         <div className="bg-white rounded-2xl shadow-xl p-6 mb-8 border-t-4 border-rose-500 overflow-hidden transform transition-all hover:shadow-2xl">
             <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-extrabold text-slate-800 flex items-center">
@@ -261,7 +290,7 @@ export const PlanDetail: React.FC = () => {
             </div>
         </div>
 
-        {/* Tabs and Content (Kept largely same, just context) */}
+        {/* Tabs */}
         <div className="flex border-b border-slate-200 mb-6 sticky top-16 bg-slate-50 z-20 pt-2">
             <button 
                 onClick={() => setActiveTab('milestones')}
@@ -287,73 +316,105 @@ export const PlanDetail: React.FC = () => {
         <div className="min-h-[300px]">
             {activeTab === 'milestones' && (
                 <div className="space-y-4">
-                    {plan.milestones.map((m, idx) => (
-                        <div key={m.id || idx} className={`relative flex items-center bg-white p-5 rounded-xl border shadow-sm transition-all ${m.isCompleted ? 'border-green-200 bg-green-50/50' : 'border-slate-100'}`}>
-                            <div className="absolute left-8 top-0 bottom-0 w-0.5 bg-slate-100 -z-10 h-full last:hidden"></div>
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center mr-4 flex-shrink-0 border-2 z-10 ${m.isCompleted ? 'bg-green-500 border-green-500 text-white' : 'bg-white border-slate-300 text-slate-500 font-bold'}`}>
-                                {m.isCompleted ? <CheckCircle size={16} /> : idx + 1}
-                            </div>
-                            <div className="flex-1">
-                                <div className="flex items-center mb-1">
-                                    <h4 className={`font-bold text-base mr-2 ${m.isCompleted ? 'text-slate-900' : 'text-slate-700'}`}>{m.title}</h4>
-                                    <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold border ${
-                                        (m.weight || 2) === 3 ? 'bg-rose-50 text-rose-600 border-rose-200' :
-                                        (m.weight || 2) === 2 ? 'bg-blue-50 text-blue-600 border-blue-200' :
-                                        'bg-slate-100 text-slate-500 border-slate-200'
-                                    }`}>
-                                        {(m.weight || 2) === 3 ? '높음' : (m.weight || 2) === 2 ? '보통' : '낮음'}
-                                    </span>
+                    {plan.milestones.map((m, idx) => {
+                        const msDueDate = new Date(m.dueDate);
+                        const msGraceEnd = new Date(msDueDate.getTime() + (24 * 60 * 60 * 1000));
+                        const isMsExpired = now > msDueDate;
+                        const isMsInGrace = isMsExpired && now < msGraceEnd && !m.isCompleted;
+                        const isMsFailed = now > msGraceEnd && !m.isCompleted;
+
+                        return (
+                        <div key={m.id || idx} className={`relative flex flex-col bg-white p-5 rounded-xl border shadow-sm transition-all ${m.isCompleted ? 'border-green-200 bg-green-50/50' : isMsFailed ? 'border-red-100 bg-red-50/30' : 'border-slate-100'}`}>
+                            <div className="flex items-start w-full">
+                                <div className={`w-8 h-8 rounded-full flex items-center justify-center mr-4 flex-shrink-0 border-2 z-10 ${m.isCompleted ? 'bg-green-500 border-green-500 text-white' : isMsFailed ? 'bg-red-100 border-red-200 text-red-400' : 'bg-white border-slate-300 text-slate-500 font-bold'}`}>
+                                    {m.isCompleted ? <CheckCircle size={16} /> : isMsFailed ? <X size={16}/> : idx + 1}
                                 </div>
-                                <p className="text-xs text-slate-400">마감 예정: {m.dueDate ? new Date(m.dueDate).toLocaleDateString() : '미정'}</p>
-                                
-                                {m.analysis && (
-                                    <div className="mt-2.5 pt-2 border-t border-slate-100">
-                                        <div className="flex flex-wrap items-center gap-2 mb-1.5">
-                                            <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">
-                                                {ACTION_TYPE_MAP[m.analysis.action_type] || m.analysis.action_type}
+                                <div className="flex-1">
+                                    <div className="flex items-center justify-between mb-1">
+                                        <div className="flex items-center">
+                                            <h4 className={`font-bold text-base mr-2 ${m.isCompleted ? 'text-slate-900' : isMsFailed ? 'text-red-400 line-through' : 'text-slate-700'}`}>{m.title}</h4>
+                                            <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold border mr-2 ${
+                                                (m.weight || 2) === 3 ? 'bg-rose-50 text-rose-600 border-rose-200' :
+                                                (m.weight || 2) === 2 ? 'bg-blue-50 text-blue-600 border-blue-200' :
+                                                'bg-slate-100 text-slate-500 border-slate-200'
+                                            }`}>
+                                                {(m.weight || 2) === 3 ? '높음' : (m.weight || 2) === 2 ? '보통' : '낮음'}
                                             </span>
-                                             {m.analysis.recommended_evidence.map((ev, i) => (
-                                                 <span key={i} className="text-[10px] text-slate-500 bg-white border border-slate-200 px-1.5 py-0.5 rounded flex items-center">
-                                                    {EVIDENCE_MAP[ev] || ev}
-                                                 </span>
-                                             ))}
                                         </div>
-                                        <p className="text-[11px] text-slate-500 leading-snug">
-                                            💡 {m.analysis.notes}
-                                        </p>
+                                        <button 
+                                            onClick={(e) => handleMilestoneLike(idx, e)}
+                                            className={`flex items-center text-xs font-bold px-2 py-1 rounded-full border transition-all ${
+                                                (m.likes || 0) >= 5 ? 'bg-rose-100 text-rose-600 border-rose-200' : 'bg-white text-slate-400 border-slate-200 hover:border-rose-300 hover:text-rose-500'
+                                            }`}
+                                        >
+                                            <Heart size={10} className={`mr-1 ${(m.likes || 0) > 0 ? 'fill-rose-500 text-rose-500' : ''}`} /> {m.likes || 0}/5
+                                        </button>
                                     </div>
+                                    
+                                    <div className="flex items-center text-xs text-slate-400 mb-2">
+                                        {isMsInGrace && <span className="text-red-500 font-bold mr-2 animate-pulse">! 유예 기간 (1일 남음)</span>}
+                                        마감: {msDueDate.toLocaleDateString()}
+                                    </div>
+                                    
+                                    {m.isCompleted && (
+                                        <div className="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded border mb-2 bg-white">
+                                            {m.verificationType === 'OFFICIAL_BIOMETRIC' ? (
+                                                <span className="text-green-600 flex items-center border-green-100"><ShieldCheck size={10} className="mr-1"/>정밀 인증 (신뢰도 80%)</span>
+                                            ) : (
+                                                <span className="text-slate-500 flex items-center border-slate-100"><ImageIcon size={10} className="mr-1"/>일반 인증 (신뢰도 20%)</span>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {m.analysis && !m.isCompleted && (
+                                        <div className="pt-2 border-t border-slate-100">
+                                            <div className="flex flex-wrap items-center gap-2 mb-1.5">
+                                                <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">
+                                                    {ACTION_TYPE_MAP[m.analysis.action_type] || m.analysis.action_type}
+                                                </span>
+                                                {m.analysis.recommended_evidence.map((ev, i) => (
+                                                    <span key={i} className="text-[10px] text-slate-500 bg-white border border-slate-200 px-1.5 py-0.5 rounded flex items-center">
+                                                        {EVIDENCE_MAP[ev] || ev}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Action Buttons Area */}
+                            <div className="ml-12 mt-2">
+                                {m.isCompleted ? (
+                                     <button 
+                                        onClick={(e) => handleMilestoneClick(idx, e)}
+                                        className="text-xs border border-green-300 text-green-700 bg-white px-3 py-1.5 rounded-lg hover:bg-green-50 transition-colors font-bold flex items-center"
+                                     >
+                                        <ImageIcon size={12} className="mr-1"/> 인증 보기
+                                     </button>
+                                ) : isOwner && !isMsFailed ? (
+                                     <button 
+                                        onClick={(e) => handleMilestoneClick(idx, e)}
+                                        className={`text-xs border px-3 py-1.5 rounded-lg transition-colors font-bold w-full md:w-auto flex justify-center ${
+                                            isMsInGrace 
+                                            ? 'bg-red-50 border-red-300 text-red-600 hover:bg-red-100' 
+                                            : 'bg-white border-brand-200 text-brand-600 hover:bg-brand-50'
+                                        }`}
+                                     >
+                                        {isMsInGrace ? '🚨 유예 기간 내 인증하기' : '인증하기'}
+                                     </button>
+                                ) : !m.isCompleted && (
+                                     <div className="text-xs px-2 py-1 rounded-md font-bold border inline-flex items-center bg-slate-50 text-slate-400 border-slate-200">
+                                        {isMsFailed ? '기간 만료 (실패)' : <><Lock size={10} className="mr-1"/>잠김</>}
+                                     </div>
                                 )}
                             </div>
-                            
-                            {!isVerificationPhase && (
-                                <>
-                                    {m.isCompleted ? (
-                                         <button 
-                                            onClick={(e) => handleMilestoneClick(idx, e)}
-                                            className="text-xs border border-green-300 text-green-700 bg-white px-3 py-1.5 rounded-lg hover:bg-green-50 transition-colors font-bold flex items-center ml-2"
-                                         >
-                                            <ImageIcon size={12} className="mr-1"/> 인증 보기
-                                         </button>
-                                    ) : isOwner ? (
-                                         <button 
-                                            onClick={(e) => handleMilestoneClick(idx, e)}
-                                            className="text-xs border border-brand-200 text-brand-600 bg-white px-3 py-1.5 rounded-lg hover:bg-brand-50 transition-colors font-bold ml-2"
-                                         >
-                                            인증하기
-                                         </button>
-                                    ) : (
-                                         <div className="text-xs px-2 py-1 rounded-md font-bold border flex items-center bg-slate-50 text-slate-400 border-slate-200 ml-2">
-                                            <Lock size={10} className="mr-1"/>잠김
-                                         </div>
-                                    )}
-                                </>
-                            )}
                         </div>
-                    ))}
+                    )})}
                 </div>
             )}
             
-            {/* Logs and Comments tabs */}
+            {/* Logs */}
             {activeTab === 'logs' && (
                 <div className="space-y-8">
                      {(!plan.logs || plan.logs.length === 0) ? (
@@ -374,9 +435,16 @@ export const PlanDetail: React.FC = () => {
                                             <p className="text-sm font-bold text-slate-800">{log.milestoneTitle}</p>
                                         </div>
                                     </div>
-                                    <span className="text-xs text-slate-400 font-medium bg-white px-2 py-1 rounded border border-slate-200">
-                                        {new Date(log.date).toLocaleDateString()}
-                                    </span>
+                                    <div className="flex flex-col items-end">
+                                        <span className="text-xs text-slate-400 font-medium mb-1">
+                                            {new Date(log.date).toLocaleDateString()}
+                                        </span>
+                                        {log.verificationType === 'OFFICIAL_BIOMETRIC' && (
+                                            <span className="text-[10px] text-green-600 font-bold bg-green-50 px-1.5 py-0.5 rounded border border-green-200 flex items-center">
+                                                <ShieldCheck size={10} className="mr-0.5"/> 정밀 인증
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
                                 <div className="p-6">
                                     <div className="mb-8 rounded-xl overflow-hidden border border-slate-100 bg-slate-50">
@@ -384,9 +452,11 @@ export const PlanDetail: React.FC = () => {
                                     </div>
                                     <div className="grid grid-cols-1 gap-4">
                                         {['힘들었던 것', '예측하지 못했던 것', '이룬 것', '성공 요인', '발전이 필요한 점', '해결 방안', '하고 싶은 말'].map((q, i) => (
-                                            <div key={i} className="bg-slate-50 p-4 rounded-lg border border-slate-100">
-                                                <p className="font-bold text-slate-500 text-xs mb-1">{i+1}. {q}</p>
-                                                <p className="text-slate-800 font-medium leading-relaxed">{(log.answers as any)[`q${i+1}`]}</p>
+                                            <div key={i} className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                                                <p className="font-bold text-slate-500 text-xs mb-2">{i + 1}. {q}</p>
+                                                <p className="text-slate-800 font-medium text-sm leading-relaxed whitespace-pre-wrap">
+                                                    {(log.answers as any)[`q${i+1}`] || "-"}
+                                                </p>
                                             </div>
                                         ))}
                                     </div>
@@ -397,30 +467,35 @@ export const PlanDetail: React.FC = () => {
                 </div>
             )}
 
-            {activeTab === 'comments' && (
-                 <div className="bg-white rounded-xl border border-slate-200 p-10 text-center">
-                    <MessageSquare size={48} className="mx-auto mb-4 text-slate-200" />
-                    <p className="text-slate-500 font-medium">아직 응원 댓글이 없습니다.</p>
-                    <button className="mt-4 text-brand-600 font-bold hover:underline bg-brand-50 px-4 py-2 rounded-lg">댓글 작성하기</button>
+             {/* Comments */}
+             {activeTab === 'comments' && (
+                <div className="text-center py-20 text-slate-400 bg-white rounded-xl border border-slate-100 border-dashed">
+                    <MessageSquare className="mx-auto mb-3 opacity-50" size={40} />
+                    <p className="font-medium">댓글 기능이 곧 추가될 예정입니다.</p>
                 </div>
             )}
-
         </div>
+
+        {/* Log Modal */}
+        {isLogModalOpen && selectedMilestoneIndex !== null && plan.milestones[selectedMilestoneIndex] && (
+            <LogModal 
+                isOpen={isLogModalOpen}
+                onClose={() => setIsLogModalOpen(false)}
+                milestoneTitle={plan.milestones[selectedMilestoneIndex].title}
+                milestoneAnalysis={plan.milestones[selectedMilestoneIndex].analysis}
+                onSubmit={handleLogSubmit}
+            />
+        )}
+
+        {/* View Log Modal */}
+        {isViewLogModalOpen && selectedLog && (
+            <ViewLogModal 
+                isOpen={isViewLogModalOpen}
+                onClose={() => setIsViewLogModalOpen(false)}
+                log={selectedLog}
+            />
+        )}
       </main>
-
-      <LogModal 
-        isOpen={isLogModalOpen} 
-        onClose={() => { setIsLogModalOpen(false); setSelectedMilestoneIndex(null); }} 
-        milestoneTitle={selectedMilestoneIndex !== null ? plan.milestones[selectedMilestoneIndex].title : ''}
-        milestoneAnalysis={selectedMilestoneIndex !== null ? plan.milestones[selectedMilestoneIndex].analysis : undefined}
-        onSubmit={handleLogSubmit}
-      />
-
-      <ViewLogModal
-        isOpen={isViewLogModalOpen}
-        onClose={() => { setIsViewLogModalOpen(false); setSelectedLog(null); }}
-        log={selectedLog}
-      />
     </div>
   );
 };

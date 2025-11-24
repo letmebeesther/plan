@@ -23,6 +23,8 @@ export interface User {
   bio: string;
   followers: string[]; // User IDs
   following: string[]; // User IDs
+  trustScore: number; // 0 to 100 (Calculated: 70% history + 30% face verified)
+  isFaceVerified: boolean; // True if face matched profile photo
 }
 
 export interface MilestoneAnalysis {
@@ -33,6 +35,8 @@ export interface MilestoneAnalysis {
   notes: string;
 }
 
+export type VerificationType = 'PHOTO_TEXT' | 'OFFICIAL_BIOMETRIC';
+
 export interface Milestone {
   id: string;
   title: string;
@@ -40,6 +44,8 @@ export interface Milestone {
   isCompleted: boolean;
   weight: number; // 1: Low, 2: Medium, 3: High importance
   analysis?: MilestoneAnalysis; // Optional AI analysis
+  likes: number; // Max 5 per milestone
+  verificationType?: VerificationType; // 20% (PHOTO) or 80% (OFFICIAL) credibility
 }
 
 export interface ProgressLog {
@@ -47,6 +53,7 @@ export interface ProgressLog {
   date: string;
   milestoneTitle: string; // Which milestone this log is for
   image: string; // Evidence Photo (Base64 or URL)
+  verificationType: VerificationType;
   answers: {
     q1: string; // 힘들었던 것
     q2: string; // 예측하지 못했던 것

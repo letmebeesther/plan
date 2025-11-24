@@ -14,7 +14,9 @@ const ADMIN_USER = {
     bio: 'Plan & Prove 공식 관리자 계정입니다.',
     avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Admin&backgroundColor=c0aede',
     followers: [],
-    following: []
+    following: [],
+    trustScore: 100,
+    isFaceVerified: true
 };
 
 // Get current session from LocalStorage (Persists login state only)
@@ -77,7 +79,9 @@ export const login = async (email: string, password: string): Promise<{ success:
           avatar: userData.avatar,
           bio: userData.bio,
           followers: userData.followers || [],
-          following: userData.following || []
+          following: userData.following || [],
+          trustScore: userData.trustScore || 0,
+          isFaceVerified: userData.isFaceVerified || false
       };
       
       // Save session to local storage
@@ -111,7 +115,9 @@ export const register = async (email: string, password: string, name: string, bi
             bio: bio || '새로운 도전자',
             avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${name}`,
             followers: [],
-            following: []
+            following: [],
+            trustScore: 0,
+            isFaceVerified: false
         };
 
         // Save to Firestore
@@ -124,7 +130,9 @@ export const register = async (email: string, password: string, name: string, bi
             avatar: newUser.avatar,
             bio: newUser.bio,
             followers: [],
-            following: []
+            following: [],
+            trustScore: newUser.trustScore,
+            isFaceVerified: newUser.isFaceVerified
         };
         localStorage.setItem(SESSION_KEY, JSON.stringify(sessionUser));
 

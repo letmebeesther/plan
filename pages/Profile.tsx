@@ -1,10 +1,11 @@
 
+
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getCurrentUser, getUserById, logout, toggleFollow } from '../services/authService';
-import { getUserPlans } from '../services/planService';
+import { getUserPlans, verifyUserFace } from '../services/planService';
 import { Plan, PlanStatus, User } from '../types';
-import { Loader2, AlertCircle, Settings, LogOut, UserPlus, UserCheck, Heart } from 'lucide-react';
+import { Loader2, AlertCircle, Settings, LogOut, UserPlus, UserCheck, Heart, ShieldCheck, ShieldAlert } from 'lucide-react';
 
 export const Profile: React.FC = () => {
   const { userId } = useParams();
@@ -66,6 +67,15 @@ export const Profile: React.FC = () => {
       }
   };
 
+  const handleFaceVerify = async () => {
+      if(!isMe || !profileUser) return;
+      if(window.confirm("얼굴 인증을 진행하시겠습니까? (데모: 즉시 완료됨)")) {
+          await verifyUserFace(profileUser.id);
+          setProfileUser({...profileUser, isFaceVerified: true, trustScore: Math.min(profileUser.trustScore + 30, 100)});
+          alert("얼굴 인증이 완료되었습니다! 신뢰도가 상승했습니다.");
+      }
+  };
+
   if (loading) return <div className="flex items-center justify-center min-h-screen bg-slate-50"><Loader2 className="animate-spin text-brand-600" size={32} /></div>;
   if (!profileUser) return <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50 p-4"><AlertCircle size={48} className="text-slate-300 mb-4" /><h2 className="text-lg font-bold text-slate-700 mb-2">사용자를 찾을 수 없습니다</h2><button onClick={() => navigate('/')} className="text-brand-600 font-bold hover:underline">홈으로 돌아가기</button></div>;
 
@@ -85,8 +95,9 @@ export const Profile: React.FC = () => {
 
   const getProgress = (plan: Plan) => {
      if (!plan.milestones.length) return 0;
-     const completed = plan.milestones.filter(m => m.isCompleted).length;
-     return Math.round((completed / plan.milestones.length) * 100);
+     const completedWeight = plan.milestones.filter(m => m.isCompleted).reduce((sum, m) => sum + (m.weight || 2), 0);
+     const totalWeight = plan.milestones.reduce((sum, m) => sum + (m.weight || 2), 0);
+     return Math.round((completedWeight / totalWeight) * 100);
   };
 
   return (
@@ -96,13 +107,34 @@ export const Profile: React.FC = () => {
         <div className="max-w-6xl mx-auto px-4 relative">
             <div className="absolute -top-12 p-1 bg-white rounded-full">
                 <img src={profileUser.avatar} alt="Profile" className="w-24 h-24 rounded-full border border-slate-100 shadow-md bg-slate-50" />
+                {profileUser.isFaceVerified && (
+                    <div className="absolute bottom-0 right-0 bg-green-500 text-white p-1.5 rounded-full border-2 border-white" title="본인 인증됨">
+                        <ShieldCheck size={14} />
+                    </div>
+                )}
             </div>
             <div className="pt-16">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
                     <div className="mb-4 md:mb-0">
-                        <h1 className="text-2xl font-bold text-slate-900">{profileUser.name}</h1>
+                        <h1 className="text-2xl font-bold text-slate-900 flex items-center">
+                            {profileUser.name}
+                            <span className={`ml-3 text-xs px-2 py-0.5 rounded-full border font-bold ${profileUser.trustScore >= 70 ? 'bg-green-50 text-green-700 border-green-200' : 'bg-slate-50 text-slate-500 border-slate-200'}`}>
+                                신뢰도 {profileUser.trustScore}%
+                            </span>
+                        </h1>
                         <p className="text-slate-500 text-sm font-medium">@{profileUser.id.split('_')[0]}</p>
                         <p className="mt-3 text-slate-700 max-w-lg leading-relaxed text-sm whitespace-pre-wrap">{profileUser.bio}</p>
+                        
+                        {/* Verification Status / Action */}
+                        {isMe && !profileUser.isFaceVerified && (
+                            <button 
+                                onClick={handleFaceVerify}
+                                className="mt-2 flex items-center text-xs font-bold text-brand-600 bg-brand-50 px-3 py-1.5 rounded-lg hover:bg-brand-100 transition-colors"
+                            >
+                                <ShieldAlert size={14} className="mr-1.5"/>
+                                본인(얼굴) 인증하고 신뢰도 +30% 받기
+                            </button>
+                        )}
                     </div>
                     {isMe ? (
                         <div className="flex space-x-2 w-full md:w-auto mt-2 md:mt-0">

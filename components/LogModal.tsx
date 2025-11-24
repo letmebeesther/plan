@@ -1,14 +1,15 @@
 
+
 import React, { useState, useRef } from 'react';
-import { X, Camera, Upload, CheckCircle2, AlertCircle } from 'lucide-react';
-import { MilestoneAnalysis } from '../types';
+import { X, Camera, Upload, CheckCircle2, AlertCircle, ShieldCheck, FileText } from 'lucide-react';
+import { MilestoneAnalysis, VerificationType } from '../types';
 
 interface LogModalProps {
   isOpen: boolean;
   onClose: () => void;
   milestoneTitle: string;
   milestoneAnalysis?: MilestoneAnalysis;
-  onSubmit: (data: { image: string; answers: any }) => void;
+  onSubmit: (data: { image: string; answers: any; verificationType: VerificationType }) => void;
 }
 
 const ACTION_TYPE_MAP: Record<string, string> = {
@@ -39,6 +40,7 @@ export const LogModal: React.FC<LogModalProps> = ({ isOpen, onClose, milestoneTi
       q1: '', q2: '', q3: '', q4: '', q5: '', q6: '', q7: ''
   });
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [verificationType, setVerificationType] = useState<VerificationType>('PHOTO_TEXT');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (!isOpen) return null;
@@ -71,9 +73,8 @@ export const LogModal: React.FC<LogModalProps> = ({ isOpen, onClose, milestoneTi
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validation
     if (!imagePreview) {
-        alert("목표 달성 인증샷을 업로드해주세요!");
+        alert("증거 자료를 업로드해주세요!");
         return;
     }
 
@@ -85,7 +86,8 @@ export const LogModal: React.FC<LogModalProps> = ({ isOpen, onClose, milestoneTi
 
     onSubmit({
         image: imagePreview,
-        answers
+        answers,
+        verificationType
     });
   };
 
@@ -107,27 +109,64 @@ export const LogModal: React.FC<LogModalProps> = ({ isOpen, onClose, milestoneTi
                     <h4 className="text-sm font-bold text-indigo-900 mb-2 flex items-center">
                         🤖 AI 인증 가이드
                     </h4>
-                    <div className="flex flex-wrap gap-2 mb-2">
-                        <span className="text-xs bg-white text-indigo-700 px-2 py-1 rounded border border-indigo-200 font-bold">
-                            {ACTION_TYPE_MAP[milestoneAnalysis.action_type] || milestoneAnalysis.action_type}
-                        </span>
+                    <p className="text-xs text-indigo-800 leading-relaxed font-medium mb-2">
+                        {milestoneAnalysis.notes}
+                    </p>
+                    <div className="flex flex-wrap gap-2">
                         {milestoneAnalysis.recommended_evidence.map(e => (
-                            <span key={e} className="text-xs bg-white text-slate-600 px-2 py-1 rounded border border-slate-200">
+                            <span key={e} className="text-[10px] bg-white text-slate-600 px-2 py-1 rounded border border-slate-200">
                                 {EVIDENCE_MAP[e] || e}
                             </span>
                         ))}
                     </div>
-                    <p className="text-xs text-indigo-800 leading-relaxed font-medium">
-                        {milestoneAnalysis.notes}
-                    </p>
                 </div>
             )}
+
+            {/* Verification Type Selection */}
+            <div>
+                <label className="block text-sm font-bold text-slate-700 mb-3">인증 방식 선택</label>
+                <div className="grid grid-cols-2 gap-3">
+                    <button
+                        type="button"
+                        onClick={() => setVerificationType('PHOTO_TEXT')}
+                        className={`p-3 rounded-xl border-2 text-left transition-all ${
+                            verificationType === 'PHOTO_TEXT'
+                            ? 'border-brand-500 bg-brand-50'
+                            : 'border-slate-200 hover:border-brand-300'
+                        }`}
+                    >
+                        <div className="flex items-center mb-1">
+                            <FileText size={18} className={verificationType === 'PHOTO_TEXT' ? 'text-brand-600' : 'text-slate-400'} />
+                            <span className={`ml-2 text-sm font-bold ${verificationType === 'PHOTO_TEXT' ? 'text-brand-700' : 'text-slate-600'}`}>일반 인증</span>
+                        </div>
+                        <p className="text-[10px] text-slate-500">글/사진 업로드</p>
+                        <p className="text-[10px] font-bold text-slate-400 mt-1">신뢰도 20% 인정</p>
+                    </button>
+
+                    <button
+                        type="button"
+                        onClick={() => setVerificationType('OFFICIAL_BIOMETRIC')}
+                        className={`p-3 rounded-xl border-2 text-left transition-all ${
+                            verificationType === 'OFFICIAL_BIOMETRIC'
+                            ? 'border-green-500 bg-green-50'
+                            : 'border-slate-200 hover:border-green-300'
+                        }`}
+                    >
+                        <div className="flex items-center mb-1">
+                            <ShieldCheck size={18} className={verificationType === 'OFFICIAL_BIOMETRIC' ? 'text-green-600' : 'text-slate-400'} />
+                            <span className={`ml-2 text-sm font-bold ${verificationType === 'OFFICIAL_BIOMETRIC' ? 'text-green-700' : 'text-slate-600'}`}>정밀 인증</span>
+                        </div>
+                        <p className="text-[10px] text-slate-500">생체데이터/공식서류</p>
+                        <p className="text-[10px] font-bold text-green-600 mt-1">신뢰도 80% 인정</p>
+                    </button>
+                </div>
+            </div>
 
             {/* Image Upload Section */}
             <div className="space-y-3">
                 <label className="block text-sm font-bold text-slate-700 flex items-center">
                     <Camera size={16} className="mr-1.5 text-brand-500"/>
-                    인증샷 업로드 (필수)
+                    증거 자료 업로드 (필수)
                 </label>
                 
                 <div 
@@ -143,8 +182,9 @@ export const LogModal: React.FC<LogModalProps> = ({ isOpen, onClose, milestoneTi
                             <div className="w-12 h-12 bg-brand-50 text-brand-500 rounded-full flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
                                 <Upload size={20} />
                             </div>
-                            <p className="text-sm text-slate-500 font-medium">클릭하여 사진 업로드</p>
-                            <p className="text-xs text-slate-400 mt-1">목표 달성을 증명할 수 있는 사진</p>
+                            <p className="text-sm text-slate-500 font-medium">
+                                {verificationType === 'OFFICIAL_BIOMETRIC' ? '생체데이터/공식서류 캡쳐본 업로드' : '인증 사진 업로드'}
+                            </p>
                         </>
                     )}
                     <input 

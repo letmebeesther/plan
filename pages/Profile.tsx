@@ -1,5 +1,4 @@
 
-
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getCurrentUser, getUserById, logout, toggleFollow } from '../services/authService';
@@ -94,7 +93,7 @@ export const Profile: React.FC = () => {
     <div className="pb-24 min-h-screen bg-slate-50">
       <div className="bg-white pb-6 border-b border-slate-100 shadow-sm">
         <div className="h-32 bg-gradient-to-r from-brand-500 to-indigo-600 relative"></div>
-        <div className="max-w-4xl mx-auto px-4 relative">
+        <div className="max-w-6xl mx-auto px-4 relative">
             <div className="absolute -top-12 p-1 bg-white rounded-full">
                 <img src={profileUser.avatar} alt="Profile" className="w-24 h-24 rounded-full border border-slate-100 shadow-md bg-slate-50" />
             </div>
@@ -146,7 +145,7 @@ export const Profile: React.FC = () => {
         </div>
       </div>
       
-      <div className="max-w-4xl mx-auto px-4 py-8 space-y-8">
+      <div className="max-w-6xl mx-auto px-4 py-8 space-y-8">
           <section>
             <h2 className="font-bold text-lg mb-4 text-slate-800">진행 중인 계획</h2>
             {activePlans.length > 0 ? (

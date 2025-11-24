@@ -167,7 +167,7 @@ export const CreatePlan: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-50 pb-24">
       <header className="bg-white border-b border-slate-200 sticky top-0 z-20 shadow-sm">
-        <div className="max-w-2xl mx-auto px-4 h-14 flex items-center">
+        <div className="max-w-2xl mx-auto px-4 h-12 flex items-center">
             <button onClick={() => navigate(-1)} className="p-2 -ml-2 mr-2 text-slate-600 hover:bg-slate-100 rounded-full transition-colors">
                 <ChevronLeft size={24} />
             </button>

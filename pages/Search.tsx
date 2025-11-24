@@ -70,7 +70,7 @@ export const Search: React.FC = () => {
   };
 
   return (
-    <div className="pb-24 min-h-screen bg-slate-50 px-4 pt-8 md:pt-24">
+    <div className="pb-24 min-h-screen bg-slate-50 px-4 pt-8 md:pt-20">
         <div className="max-w-md mx-auto">
             <div className="flex items-center mb-4">
                 <button 

@@ -113,7 +113,7 @@ export const CategoryRecommend: React.FC = () => {
   return (
     <div className="pb-24 min-h-screen bg-slate-50">
       {/* Header */}
-      <header className="bg-white border-b border-slate-200 pt-8 md:pt-24 pb-0">
+      <header className="bg-white border-b border-slate-200 pt-8 md:pt-20 pb-0">
           <div className="max-w-4xl mx-auto px-4">
             <div className="flex items-center mb-4">
                  <Flame className="text-brand-600 mr-2" size={24} />

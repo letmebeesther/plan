@@ -2,8 +2,8 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { getGroupChallengeById } from '../services/planService';
-import { GroupChallenge } from '../types';
-import { ChevronLeft, Users, Clock, ArrowRight } from 'lucide-react';
+import { GroupChallenge, PlanStatus } from '../types';
+import { ChevronLeft, Users, ArrowRight } from 'lucide-react';
 
 export const GroupDetail: React.FC = () => {
   const { id } = useParams();
@@ -37,7 +37,7 @@ export const GroupDetail: React.FC = () => {
             </button>
         </div>
         <div className="absolute bottom-0 left-0 w-full p-6 text-white z-10">
-            <div className="max-w-4xl mx-auto">
+            <div className="max-w-6xl mx-auto">
                 <span className="bg-indigo-500/80 backdrop-blur-sm text-white text-xs px-2 py-1 rounded-md font-bold mb-2 inline-block">
                     {group.category}
                 </span>
@@ -51,7 +51,7 @@ export const GroupDetail: React.FC = () => {
         </div>
       </div>
 
-      <main className="max-w-4xl mx-auto px-4 py-6 -mt-4 relative z-10">
+      <main className="max-w-6xl mx-auto px-4 py-6 -mt-4 relative z-10">
           <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
               <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
                   <h3 className="font-bold text-slate-800">참여자 현황</h3>
@@ -70,47 +70,58 @@ export const GroupDetail: React.FC = () => {
                               <div className="relative">
                                 <img src={p.user.avatar} alt={p.user.name} className="w-12 h-12 rounded-full border border-slate-200" />
                                 {idx < 3 && (
-                                    <div className={`absolute -top-1 -left-1 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white border border-white shadow-sm ${
-                                        idx === 0 ? 'bg-yellow-400' : idx === 1 ? 'bg-slate-400' : 'bg-orange-400'
+                                    <div className={`absolute -top-1 -left-1 w-5 h-5 rounded-full flex items-center justify-center text-[10px] border border-white text-white font-bold ${
+                                        idx === 0 ? 'bg-yellow-500' : idx === 1 ? 'bg-slate-400' : 'bg-orange-600'
                                     }`}>
                                         {idx + 1}
                                     </div>
                                 )}
                               </div>
                           </Link>
-
-                          {/* Info & Progress (Click to go to plan) */}
-                          <div 
-                            onClick={() => navigate(`/plan/${p.planId}`)}
-                            className="flex-1 min-w-0 mr-4 cursor-pointer"
-                          >
-                              <div className="flex justify-between items-end mb-1">
-                                  <h4 className="font-bold text-slate-900 text-sm truncate hover:text-brand-600">{p.user.name}</h4>
-                                  <span className="text-brand-600 font-bold text-xs">{p.progress}% 달성</span>
+                          
+                          {/* User Info & Progress */}
+                          <div className="flex-1 min-w-0 mr-4">
+                              <div className="flex justify-between items-center mb-1">
+                                  <Link to={`/profile/${p.user.id}`} className="font-bold text-slate-900 text-sm hover:underline truncate">
+                                      {p.user.name}
+                                  </Link>
+                                  <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${
+                                      p.status === PlanStatus.COMPLETED_SUCCESS ? 'bg-green-100 text-green-700' :
+                                      p.status === PlanStatus.COMPLETED_FAIL ? 'bg-red-100 text-red-700' :
+                                      'bg-brand-50 text-brand-600'
+                                  }`}>
+                                      {calculateTimeLeft(p.endDate)}
+                                  </span>
                               </div>
-                              <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                              <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
                                   <div 
-                                    className="h-full bg-brand-500 rounded-full transition-all duration-1000" 
+                                    className="bg-brand-500 h-full transition-all" 
                                     style={{ width: `${p.progress}%` }}
                                   ></div>
                               </div>
-                              <p className="text-xs text-slate-400 mt-1 truncate">{p.user.bio}</p>
                           </div>
 
-                          {/* Countdown & Arrow */}
-                          <div 
-                            onClick={() => navigate(`/plan/${p.planId}`)}
-                            className="flex flex-col items-end flex-shrink-0 pl-2 border-l border-slate-100 cursor-pointer"
-                          >
-                              <div className="flex items-center text-slate-500 text-xs font-bold mb-1">
-                                  <Clock size={12} className="mr-1" />
-                                  {calculateTimeLeft(p.endDate)}
-                              </div>
-                              <ArrowRight size={16} className="text-slate-300 group-hover:text-brand-500 transition-colors" />
-                          </div>
+                          {/* Action */}
+                          <Link to={`/plan/${p.planId}`} className="flex-shrink-0 text-slate-300 hover:text-brand-600 transition-colors">
+                              <ArrowRight size={20} />
+                          </Link>
                       </div>
                   ))}
               </div>
+              {group.participants.length === 0 && (
+                  <div className="p-8 text-center text-slate-400">
+                      참여자가 아직 없습니다.
+                  </div>
+              )}
+          </div>
+
+          <div className="mt-6 text-center">
+               <button 
+                onClick={() => navigate('/create', { state: { title: group.title, category: group.category, description: group.description } })}
+                className="bg-brand-600 text-white px-8 py-3 rounded-xl font-bold shadow-lg shadow-brand-500/30 hover:bg-brand-700 transition-all transform hover:-translate-y-1"
+               >
+                   이 챌린지에 함께하기
+               </button>
           </div>
       </main>
     </div>

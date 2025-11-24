@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect } from 'react';
 import { PlanCard } from '../components/PlanCard';
 import { Plan, PlanStatus, GroupChallenge } from '../types';
@@ -38,26 +37,26 @@ export const Home: React.FC = () => {
 
   return (
     <div className="pb-24 bg-slate-50 min-h-screen">
-      <header className="sticky top-0 bg-white/90 backdrop-blur-md z-40 border-b border-slate-200 px-4 py-3 shadow-sm">
-        <div className="max-w-4xl mx-auto flex items-center justify-between">
-          <h1 className="text-xl font-extrabold text-brand-900 tracking-tight">Plan & Prove</h1>
+      <header className="sticky top-0 bg-white/90 backdrop-blur-md z-40 border-b border-slate-200 px-4 py-2.5 shadow-sm">
+        <div className="max-w-6xl mx-auto flex items-center justify-between">
+          <h1 className="text-lg font-extrabold text-brand-900 tracking-tight">Plan & Prove</h1>
           <div className="flex items-center space-x-3">
              <button 
                onClick={() => setShowGuide(true)}
                className="text-slate-500 hover:text-brand-600 transition-colors p-1"
              >
-                <HelpCircle size={24} />
+                <HelpCircle size={22} />
              </button>
-             <Link to="/profile" className="w-9 h-9 rounded-full bg-slate-200 overflow-hidden border-2 border-white shadow-sm block">
+             <Link to="/profile" className="w-8 h-8 rounded-full bg-slate-200 overflow-hidden border-2 border-white shadow-sm block">
                  <div className="w-full h-full bg-brand-100 flex items-center justify-center text-brand-500">
-                    <Users size={16}/>
+                    <Users size={14}/>
                  </div>
              </Link>
           </div>
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto space-y-8 pt-6">
+      <main className="max-w-6xl mx-auto space-y-8 pt-6">
         
         {/* Honor Hall Section */}
         {successPlans.length > 0 && (
@@ -100,7 +99,7 @@ export const Home: React.FC = () => {
               </div>
               <HorizontalScroll>
                   {groups.map(group => (
-                      <Link to={`/group/${group.id}`} key={group.id} className="flex-shrink-0 w-72 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden group relative snap-start">
+                      <Link to={`/group/${group.id}`} key={group.id} className="flex-shrink-0 w-64 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden group relative snap-start">
                            <div className="h-32 relative">
                                <img src={group.image} className="w-full h-full object-cover" alt={group.title} />
                                <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition-colors"></div>
@@ -135,7 +134,7 @@ export const Home: React.FC = () => {
 
         {/* Main Feed */}
         <section className="px-4">
-            <div className="flex items-center justify-between mb-4 sticky top-16 bg-slate-50/95 backdrop-blur py-3 z-30">
+            <div className="flex items-center justify-between mb-4 sticky top-14 bg-slate-50/95 backdrop-blur py-3 z-30">
                 <div className="flex items-center">
                     <ListFilter className="text-slate-500 mr-2" size={20} />
                     <h2 className="text-lg font-bold text-slate-800">탐색</h2>
@@ -166,7 +165,7 @@ export const Home: React.FC = () => {
                     <p>아직 등록된 계획이 없습니다. 첫 번째 도전을 시작해보세요!</p>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {plans.map(plan => (
                     <PlanCard key={plan.id} plan={plan} />
                 ))}

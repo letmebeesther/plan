@@ -2,10 +2,12 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { MilestoneAnalysis } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Removed global initialization to prevent crash if API_KEY is missing on load.
+// Instead, we initialize inside each function within a try-catch block.
 
 export const analyzePlanFeasibility = async (title: string, description: string, startDate: string, endDate: string) => {
   try {
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: `다음 계획의 실현 가능성을 한국어로 분석해주세요.
@@ -24,6 +26,7 @@ export const analyzePlanFeasibility = async (title: string, description: string,
 
 export const suggestMilestones = async (title: string, description: string, startDate: string, endDate: string) => {
   try {
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: `계획 "${title}: ${description}" (${startDate} ~ ${endDate})을 달성하기 위해 적절한 중간 목표(마일스톤)들을 제안해주세요.
@@ -78,6 +81,7 @@ export const suggestMilestones = async (title: string, description: string, star
 
 export const analyzeMilestoneAction = async (milestoneTitle: string): Promise<MilestoneAnalysis | null> => {
   try {
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: `Analyze the following goal sentence: "${milestoneTitle}"`,

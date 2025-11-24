@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search as SearchIcon, Loader2, X, ChevronLeft, Tag, RotateCcw } from 'lucide-react';
+import { Search as SearchIcon, Loader2, X, ChevronLeft, Tag, RotateCcw, ListFilter } from 'lucide-react';
 import { Category, Plan } from '../types';
 import { subscribeToAllPlans, getTopTagsByCategory } from '../services/planService';
 import { PlanCard } from '../components/PlanCard';
@@ -70,8 +70,9 @@ export const Search: React.FC = () => {
   };
 
   return (
-    <div className="pb-24 min-h-screen bg-slate-50 px-4 pt-8 md:pt-20">
-        <div className="max-w-md mx-auto">
+    <div className="pb-24 min-h-screen bg-slate-50 pt-8 md:pt-20">
+        {/* Top Section: Search Input & Filters */}
+        <div className="max-w-2xl mx-auto px-4">
             <div className="flex items-center mb-4">
                 <button 
                     onClick={() => navigate(-1)} 
@@ -171,34 +172,43 @@ export const Search: React.FC = () => {
                     </div>
                 )}
             </div>
+        </div>
 
-            {/* Results */}
-            <div className="border-t border-slate-200 pt-6">
-                 <h3 className="font-bold text-slate-800 mb-4 text-lg flex items-center">
-                    검색 결과 
-                    <span className="ml-2 text-xs font-normal text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
+        {/* Results Section - Wider Layout matching Home */}
+        <div className="max-w-6xl mx-auto px-4 border-t border-slate-200 pt-6 mt-2">
+             <div className="flex items-center justify-between mb-4 sticky top-14 md:top-[4.5rem] bg-slate-50/95 backdrop-blur py-3 z-30">
+                <div className="flex items-center">
+                    <ListFilter className="text-slate-500 mr-2" size={20} />
+                    <h2 className="text-lg font-bold text-slate-800">검색 결과</h2>
+                    <span className="ml-2 text-xs font-bold text-brand-600 bg-brand-50 px-2 py-0.5 rounded-full border border-brand-100">
                         {loading ? '...' : filteredPlans.length}건
                     </span>
-                 </h3>
+                </div>
+             </div>
 
-                 {loading ? (
-                     <div className="flex justify-center py-10">
-                         <Loader2 className="animate-spin text-brand-600" size={32} />
-                     </div>
-                 ) : filteredPlans.length > 0 ? (
-                     <div className="space-y-4">
-                         {filteredPlans.map(plan => (
-                             <PlanCard key={plan.id} plan={plan} />
-                         ))}
-                     </div>
-                 ) : (
-                     <div className="text-center py-16 text-slate-400 bg-white rounded-2xl border border-slate-100 border-dashed">
-                         <SearchIcon className="mx-auto mb-3 opacity-30" size={40} />
-                         <p className="font-medium">검색 결과가 없습니다.</p>
-                         <p className="text-sm mt-1 opacity-70">다른 검색어나 카테고리를 선택해보세요.</p>
-                     </div>
-                 )}
-            </div>
+             {loading ? (
+                 <div className="flex justify-center py-20">
+                     <Loader2 className="animate-spin text-brand-600" size={40} />
+                 </div>
+             ) : filteredPlans.length > 0 ? (
+                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                     {filteredPlans.map(plan => (
+                         <PlanCard key={plan.id} plan={plan} />
+                     ))}
+                 </div>
+             ) : (
+                 <div className="text-center py-20 text-slate-400 bg-white rounded-2xl border border-slate-100 border-dashed">
+                     <SearchIcon className="mx-auto mb-3 opacity-30" size={40} />
+                     <p className="font-medium">검색 결과가 없습니다.</p>
+                     <p className="text-sm mt-1 opacity-70">다른 검색어나 카테고리를 선택해보세요.</p>
+                 </div>
+             )}
+             
+             {!loading && filteredPlans.length > 0 && (
+                <div className="text-center mt-10 text-slate-400 text-sm pb-10 font-medium">
+                    모든 결과를 불러왔습니다.
+                </div>
+            )}
         </div>
     </div>
   );

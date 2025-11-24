@@ -20,8 +20,8 @@ export const CreatePlan: React.FC = () => {
     endDate: '',
     category: [] as Category[],
     hashtags: '',
-    // Initialize with 5 items (Minimum requirement) using Array.from to create distinct objects
-    milestones: Array.from({ length: 5 }, () => ({ title: '', dueDate: '', weight: 2 })) as Omit<Milestone, 'id' | 'isCompleted'>[]
+    // Initialize with 3 items (Minimum requirement) using Array.from to create distinct objects
+    milestones: Array.from({ length: 3 }, () => ({ title: '', dueDate: '', weight: 2 })) as Omit<Milestone, 'id' | 'isCompleted'>[]
   });
 
   useEffect(() => {
@@ -82,8 +82,8 @@ export const CreatePlan: React.FC = () => {
   };
 
   const removeMilestone = (index: number) => {
-    if (formData.milestones.length <= 5) {
-      alert("진행 상황 관리를 위해 최소 5개의 마일스톤이 필요합니다.");
+    if (formData.milestones.length <= 3) {
+      alert("진행 상황 관리를 위해 최소 3개의 마일스톤이 필요합니다.");
       return;
     }
     setFormData(prev => ({
@@ -102,8 +102,8 @@ export const CreatePlan: React.FC = () => {
         return;
     }
 
-    if (formData.milestones.length < 5) {
-      alert("체계적인 진행 관리를 위해 최소 5개의 마일스톤이 필요합니다.");
+    if (formData.milestones.length < 3) {
+      alert("체계적인 진행 관리를 위해 최소 3개의 마일스톤이 필요합니다.");
       return;
     }
     if (formData.milestones.length > 50) {
@@ -277,7 +277,7 @@ export const CreatePlan: React.FC = () => {
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                 <div>
                     <label className="block text-lg font-bold text-slate-800">중간 목표 (마일스톤)</label>
-                    <p className="text-xs text-slate-500 mt-1">전체 기간을 5~50단계로 나누고 중요도를 설정하세요.</p>
+                    <p className="text-xs text-slate-500 mt-1">전체 기간을 3~50단계로 나누고 중요도를 설정하세요.</p>
                 </div>
                 <button 
                     type="button"

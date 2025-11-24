@@ -1,4 +1,5 @@
 
+
 import { db } from './firebase';
 import { 
   collection, 
@@ -12,9 +13,11 @@ import {
   getDoc,
   setDoc,
   arrayUnion,
-  writeBatch
+  arrayRemove,
+  writeBatch,
+  increment
 } from 'firebase/firestore';
-import { Plan, PlanStatus, ProgressLog, Category, GroupChallenge, User, VoteStats } from '../types';
+import { Plan, PlanStatus, ProgressLog, Category, GroupChallenge, User } from '../types';
 import { ensureAdminExists } from './authService';
 
 // --- DEMO DATA (20 Samples) ---
@@ -55,8 +58,8 @@ const DEMO_PLANS: Omit<Plan, 'id'>[] = [
             }
         }
     ],
-    votes: { star1: 2, star2: 3, star3: 10, star4: 30, star5: 110 },
-    likes: 90,
+    likes: 155,
+    likedBy: [],
     createdAt: new Date(Date.now() - 86400000 * 45).toISOString()
   },
   {
@@ -88,8 +91,8 @@ const DEMO_PLANS: Omit<Plan, 'id'>[] = [
             }
         }
     ],
-    votes: { star1: 1, star2: 0, star3: 5, star4: 15, star5: 70 },
-    likes: 65,
+    likes: 91,
+    likedBy: [],
     createdAt: new Date(Date.now() - 86400000 * 65).toISOString()
   },
   {
@@ -105,8 +108,8 @@ const DEMO_PLANS: Omit<Plan, 'id'>[] = [
     status: PlanStatus.COMPLETED_SUCCESS,
     milestones: Array(5).fill(null).map((_, i) => ({ id: `ms${i}`, title: `단계 ${i+1}`, dueDate: new Date().toISOString(), isCompleted: true, weight: 2 })),
     logs: [],
-    votes: { star1: 5, star2: 5, star3: 20, star4: 50, star5: 130 },
-    likes: 120,
+    likes: 330,
+    likedBy: [],
     createdAt: new Date(Date.now() - 86400000 * 75).toISOString()
   },
   {
@@ -122,8 +125,8 @@ const DEMO_PLANS: Omit<Plan, 'id'>[] = [
     status: PlanStatus.COMPLETED_SUCCESS,
     milestones: Array(5).fill(null).map((_, i) => ({ id: `ms${i}`, title: `감량 ${i+1}단계`, dueDate: new Date().toISOString(), isCompleted: true, weight: 3 })),
     logs: [],
-    votes: { star1: 10, star2: 10, star3: 20, star4: 60, star5: 220 },
-    likes: 250,
+    likes: 570,
+    likedBy: [],
     createdAt: new Date(Date.now() - 86400000 * 105).toISOString()
   },
   {
@@ -139,8 +142,8 @@ const DEMO_PLANS: Omit<Plan, 'id'>[] = [
     status: PlanStatus.COMPLETED_SUCCESS,
     milestones: Array(5).fill(null).map((_, i) => ({ id: `ms${i}`, title: `레벨 ${i+1} 달성`, dueDate: new Date().toISOString(), isCompleted: true, weight: 2 })),
     logs: [],
-    votes: { star1: 2, star2: 3, star3: 10, star4: 40, star5: 60 },
-    likes: 70,
+    likes: 185,
+    likedBy: [],
     createdAt: new Date(Date.now() - 86400000 * 55).toISOString()
   },
   // Active Plans (15 items) - Users a1 to a15
@@ -157,8 +160,8 @@ const DEMO_PLANS: Omit<Plan, 'id'>[] = [
     status: PlanStatus.ACTIVE,
     milestones: Array(5).fill(null).map((_, i) => ({ id: `m${i}`, title: `${i+1}주차 목표 달성`, dueDate: new Date().toISOString(), isCompleted: i < 2, weight: 2 })),
     logs: [],
-    votes: { star1: 1, star2: 2, star3: 5, star4: 10, star5: 30 },
-    likes: 20,
+    likes: 68,
+    likedBy: [],
     createdAt: new Date(Date.now() - 86400000 * 10).toISOString()
   },
   {
@@ -174,8 +177,8 @@ const DEMO_PLANS: Omit<Plan, 'id'>[] = [
     status: PlanStatus.ACTIVE,
     milestones: Array(5).fill(null).map((_, i) => ({ id: `m${i}`, title: `수련 ${i+1}단계`, dueDate: new Date().toISOString(), isCompleted: i < 1, weight: 2 })),
     logs: [],
-    votes: { star1: 0, star2: 1, star3: 5, star4: 5, star5: 20 },
-    likes: 15,
+    likes: 41,
+    likedBy: [],
     createdAt: new Date(Date.now() - 86400000 * 5).toISOString()
   },
   {
@@ -191,8 +194,8 @@ const DEMO_PLANS: Omit<Plan, 'id'>[] = [
     status: PlanStatus.ACTIVE,
     milestones: Array(6).fill(null).map((_, i) => ({ id: `m${i}`, title: `증량 목표 ${i+1}`, dueDate: new Date().toISOString(), isCompleted: false, weight: 3 })),
     logs: [],
-    votes: { star1: 5, star2: 10, star3: 20, star4: 40, star5: 60 },
-    likes: 50,
+    likes: 185,
+    likedBy: [],
     createdAt: new Date(Date.now() - 86400000 * 2).toISOString()
   },
   {
@@ -208,8 +211,8 @@ const DEMO_PLANS: Omit<Plan, 'id'>[] = [
     status: PlanStatus.ACTIVE,
     milestones: Array(5).fill(null).map((_, i) => ({ id: `m${i}`, title: `점수대별 공략 ${i+1}`, dueDate: new Date().toISOString(), isCompleted: i < 2, weight: 2 })),
     logs: [],
-    votes: { star1: 1, star2: 4, star3: 10, star4: 20, star5: 30 },
-    likes: 25,
+    likes: 61,
+    likedBy: [],
     createdAt: new Date(Date.now() - 86400000 * 15).toISOString()
   },
   {
@@ -225,8 +228,8 @@ const DEMO_PLANS: Omit<Plan, 'id'>[] = [
     status: PlanStatus.ACTIVE,
     milestones: Array(5).fill(null).map((_, i) => ({ id: `m${i}`, title: `챕터 ${i+1} 완료`, dueDate: new Date().toISOString(), isCompleted: false, weight: 1 })),
     logs: [],
-    votes: { star1: 0, star2: 2, star3: 5, star4: 15, star5: 20 },
-    likes: 18,
+    likes: 42,
+    likedBy: [],
     createdAt: new Date(Date.now() - 86400000 * 3).toISOString()
   },
   {
@@ -242,8 +245,8 @@ const DEMO_PLANS: Omit<Plan, 'id'>[] = [
     status: PlanStatus.ACTIVE,
     milestones: Array(5).fill(null).map((_, i) => ({ id: `m${i}`, title: `프로젝트 ${i+1} 정리`, dueDate: new Date().toISOString(), isCompleted: i < 1, weight: 3 })),
     logs: [],
-    votes: { star1: 0, star2: 0, star3: 5, star4: 20, star5: 50 },
-    likes: 40,
+    likes: 115,
+    likedBy: [],
     createdAt: new Date(Date.now() - 86400000 * 10).toISOString()
   },
   {
@@ -259,8 +262,8 @@ const DEMO_PLANS: Omit<Plan, 'id'>[] = [
     status: PlanStatus.ACTIVE,
     milestones: Array(5).fill(null).map((_, i) => ({ id: `m${i}`, title: `모듈 ${i+1} 학습`, dueDate: new Date().toISOString(), isCompleted: false, weight: 2 })),
     logs: [],
-    votes: { star1: 0, star2: 1, star3: 5, star4: 10, star5: 10 },
-    likes: 10,
+    likes: 31,
+    likedBy: [],
     createdAt: new Date(Date.now() - 86400000 * 1).toISOString()
   },
   {
@@ -276,8 +279,8 @@ const DEMO_PLANS: Omit<Plan, 'id'>[] = [
     status: PlanStatus.ACTIVE,
     milestones: Array(5).fill(null).map((_, i) => ({ id: `m${i}`, title: `구간 ${i+1} 연습`, dueDate: new Date().toISOString(), isCompleted: i < 2, weight: 2 })),
     logs: [],
-    votes: { star1: 0, star2: 0, star3: 5, star4: 15, star5: 30 },
-    likes: 35,
+    likes: 85,
+    likedBy: [],
     createdAt: new Date(Date.now() - 86400000 * 12).toISOString()
   },
   {
@@ -293,8 +296,8 @@ const DEMO_PLANS: Omit<Plan, 'id'>[] = [
     status: PlanStatus.ACTIVE,
     milestones: Array(8).fill(null).map((_, i) => ({ id: `m${i}`, title: `레시피 ${i+1} 성공`, dueDate: new Date().toISOString(), isCompleted: i < 3, weight: 1 })),
     logs: [],
-    votes: { star1: 1, star2: 1, star3: 5, star4: 20, star5: 40 },
-    likes: 45,
+    likes: 112,
+    likedBy: [],
     createdAt: new Date(Date.now() - 86400000 * 20).toISOString()
   },
   {
@@ -310,8 +313,8 @@ const DEMO_PLANS: Omit<Plan, 'id'>[] = [
     status: PlanStatus.ACTIVE,
     milestones: Array(5).fill(null).map((_, i) => ({ id: `m${i}`, title: `캠핑장 ${i+1} 방문`, dueDate: new Date().toISOString(), isCompleted: i < 1, weight: 2 })),
     logs: [],
-    votes: { star1: 0, star2: 1, star3: 5, star4: 20, star5: 30 },
-    likes: 30,
+    likes: 86,
+    likedBy: [],
     createdAt: new Date(Date.now() - 86400000 * 10).toISOString()
   },
   {
@@ -327,8 +330,8 @@ const DEMO_PLANS: Omit<Plan, 'id'>[] = [
     status: PlanStatus.ACTIVE,
     milestones: Array(5).fill(null).map((_, i) => ({ id: `m${i}`, title: `${i+1}00만원 달성`, dueDate: new Date().toISOString(), isCompleted: false, weight: 3 })),
     logs: [],
-    votes: { star1: 5, star2: 5, star3: 10, star4: 30, star5: 40 },
-    likes: 40,
+    likes: 125,
+    likedBy: [],
     createdAt: new Date(Date.now() - 86400000 * 5).toISOString()
   },
   {
@@ -344,8 +347,8 @@ const DEMO_PLANS: Omit<Plan, 'id'>[] = [
     status: PlanStatus.ACTIVE,
     milestones: Array(5).fill(null).map((_, i) => ({ id: `m${i}`, title: `${i+1}단계 금연 유지`, dueDate: new Date().toISOString(), isCompleted: i < 1, weight: 3 })),
     logs: [],
-    votes: { star1: 2, star2: 3, star3: 10, star4: 40, star5: 100 },
-    likes: 100,
+    likes: 255,
+    likedBy: [],
     createdAt: new Date(Date.now() - 86400000 * 15).toISOString()
   },
   {
@@ -361,8 +364,8 @@ const DEMO_PLANS: Omit<Plan, 'id'>[] = [
     status: PlanStatus.ACTIVE,
     milestones: Array(5).fill(null).map((_, i) => ({ id: `m${i}`, title: `${i+1}주차 완료`, dueDate: new Date().toISOString(), isCompleted: i < 3, weight: 1 })),
     logs: [],
-    votes: { star1: 0, star2: 0, star3: 5, star4: 15, star5: 20 },
-    likes: 25,
+    likes: 65,
+    likedBy: [],
     createdAt: new Date(Date.now() - 86400000 * 20).toISOString()
   },
   {
@@ -378,8 +381,8 @@ const DEMO_PLANS: Omit<Plan, 'id'>[] = [
     status: PlanStatus.ACTIVE,
     milestones: Array(5).fill(null).map((_, i) => ({ id: `m${i}`, title: `${i+1}주차 비움 실천`, dueDate: new Date().toISOString(), isCompleted: false, weight: 2 })),
     logs: [],
-    votes: { star1: 1, star2: 2, star3: 10, star4: 20, star5: 25 },
-    likes: 30,
+    likes: 88,
+    likedBy: [],
     createdAt: new Date(Date.now() - 86400000 * 2).toISOString()
   },
   {
@@ -395,16 +398,11 @@ const DEMO_PLANS: Omit<Plan, 'id'>[] = [
     status: PlanStatus.ACTIVE,
     milestones: Array(5).fill(null).map((_, i) => ({ id: `m${i}`, title: `${i+1}주차 집밥 달성`, dueDate: new Date().toISOString(), isCompleted: i < 1, weight: 2 })),
     logs: [],
-    votes: { star1: 2, star2: 3, star3: 10, star4: 35, star5: 45 },
-    likes: 60,
+    likes: 140,
+    likedBy: [],
     createdAt: new Date(Date.now() - 86400000 * 7).toISOString()
   }
 ];
-
-// Helper to calculate total votes count
-const getTotalVotes = (votes: VoteStats) => {
-    return votes.star1 + votes.star2 + votes.star3 + votes.star4 + votes.star5;
-};
 
 export const initializeDemoData = async () => {
   try {
@@ -461,22 +459,16 @@ export const initializeDemoData = async () => {
       console.log(`Created ${createdPlans.length} demo plans.`);
 
       // 3. Seed Groups using the new Plan IDs
-      // Map original DEMO_PLANS array indices to new Firestore IDs
       const getPlanIdByIndex = (index: number) => {
           const found = createdPlans.find(p => p.originalIndex === index);
           return found ? found.id : null;
       };
 
-      // Indices in DEMO_PLANS array corresponding to participants
-      // Run Crew: u_a1 (Index 5), u_a3 (Index 7) -> wait, u_a3 is index 7 (3대 500)? Let's use u_a1 and u_a12 (Run & Smoke)
-      const groupRunPlanId1 = getPlanIdByIndex(5); // u_a1 (Running)
-      const groupRunPlanId2 = getPlanIdByIndex(11); // u_a12 (Smoking - let's use u_a3 instead for fitness) -> Index 7
+      const groupRunPlanId1 = getPlanIdByIndex(5); // u_a1
+      const groupRunPlanId2 = getPlanIdByIndex(11); // u_a12
 
-      const groupStudyPlanId1 = getPlanIdByIndex(8); // u_a4 (Toeic)
-      const groupStudyPlanId2 = getPlanIdByIndex(11); // u_a7 (Marketing) -> Index 11 is Savings. Let's check array.
-      // u_a7 is index 11 (Marketing is index 11 in list? No.
-      // 0-4: Success (5)
-      // 5: u_a1, 6: u_a2, 7: u_a3, 8: u_a4, 9: u_a5, 10: u_a6, 11: u_a7
+      const groupStudyPlanId1 = getPlanIdByIndex(8); // u_a4
+      const groupStudyPlanId2 = getPlanIdByIndex(11); // u_a7 (Using 11 as generic placeholder)
       
       const demoGroups: Omit<GroupChallenge, 'id'>[] = [
         {
@@ -512,13 +504,13 @@ export const initializeDemoData = async () => {
   }
 };
 
-export const createPlan = async (planData: Omit<Plan, 'id' | 'createdAt' | 'votes' | 'likes' | 'logs' | 'status'>) => {
+export const createPlan = async (planData: Omit<Plan, 'id' | 'createdAt' | 'likes' | 'likedBy' | 'logs' | 'status'>) => {
   const newPlanData = {
     ...planData,
     status: PlanStatus.ACTIVE,
     logs: [],
-    votes: { star1: 0, star2: 0, star3: 0, star4: 0, star5: 0 },
     likes: 0,
+    likedBy: [],
     createdAt: new Date().toISOString()
   };
   
@@ -534,11 +526,7 @@ export const getPlans = async (sortBy: 'popular' | 'new' = 'new') => {
   if (sortBy === 'new') {
     return plans.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   } else {
-    return plans.sort((a, b) => {
-        const scoreA = a.likes + getTotalVotes(a.votes);
-        const scoreB = b.likes + getTotalVotes(b.votes);
-        return scoreB - scoreA;
-    });
+    return plans.sort((a, b) => b.likes - a.likes);
   }
 };
 
@@ -559,7 +547,7 @@ export const getPlansByCategory = async (category: Category) => {
     return allPlans.filter(p => p.categories.includes(category)).sort((a, b) => {
         if (a.status === PlanStatus.COMPLETED_SUCCESS && b.status !== PlanStatus.COMPLETED_SUCCESS) return -1;
         if (b.status === PlanStatus.COMPLETED_SUCCESS && a.status !== PlanStatus.COMPLETED_SUCCESS) return 1;
-        return (b.likes + getTotalVotes(b.votes)) - (a.likes + getTotalVotes(a.votes));
+        return b.likes - a.likes;
     });
 };
 
@@ -575,7 +563,7 @@ export const subscribeToAllPlans = (
     if (sortBy === 'new') {
        plans.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     } else {
-       plans.sort((a, b) => (b.likes + getTotalVotes(b.votes)) - (a.likes + getTotalVotes(a.votes)));
+       plans.sort((a, b) => b.likes - a.likes);
     }
     callback(plans);
   });
@@ -603,20 +591,27 @@ export const subscribeToPlan = (planId: string, callback: (plan: Plan | null) =>
   });
 };
 
-export const voteForPlan = async (planId: string, rating: number) => {
-  if (rating < 1 || rating > 5) return;
-
+// Replaced voteForPlan with toggleLikePlan
+export const toggleLikePlan = async (planId: string, userId: string) => {
   const planRef = doc(db, 'plans', planId);
   const planSnap = await getDoc(planRef);
   
   if (planSnap.exists()) {
       const plan = planSnap.data() as Plan;
-      const votes = plan.votes || { star1: 0, star2: 0, star3: 0, star4: 0, star5: 0 };
-      
-      const key = `star${rating}` as keyof VoteStats;
-      votes[key] = (votes[key] || 0) + 1;
-      
-      await updateDoc(planRef, { votes });
+      const likedBy = plan.likedBy || [];
+      const isLiked = likedBy.includes(userId);
+
+      if (isLiked) {
+        await updateDoc(planRef, {
+            likes: increment(-1),
+            likedBy: arrayRemove(userId)
+        });
+      } else {
+        await updateDoc(planRef, {
+            likes: increment(1),
+            likedBy: arrayUnion(userId)
+        });
+      }
   }
 };
 

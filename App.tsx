@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { HashRouter as Router, Routes, Route } from 'react-router-dom';
 import { Navbar } from './components/Navbar';
@@ -38,10 +39,18 @@ const App: React.FC = () => {
       }
     };
 
+    // Auth Logout Listener
+    const handleLogout = () => {
+      setIsAuthenticated(false);
+    };
+
     window.addEventListener('scroll', handleScroll);
+    window.addEventListener('auth:logout', handleLogout);
+    
     return () => {
         clearTimeout(timer);
         window.removeEventListener('scroll', handleScroll);
+        window.removeEventListener('auth:logout', handleLogout);
     };
   }, []);
 
@@ -54,7 +63,11 @@ const App: React.FC = () => {
   }
 
   if (!isAuthenticated) {
-      return <Login onLoginSuccess={() => setIsAuthenticated(true)} />;
+      return <Login onLoginSuccess={() => {
+        setIsAuthenticated(true);
+        // Always redirect to home on login
+        window.location.hash = '/';
+      }} />;
   }
 
   return (

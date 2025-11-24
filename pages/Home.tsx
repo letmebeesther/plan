@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { PlanCard } from '../components/PlanCard';
 import { Plan, PlanStatus, GroupChallenge } from '../types';
@@ -28,12 +29,12 @@ export const Home: React.FC = () => {
 
   const successPlans = plans.filter(p => p.status === PlanStatus.COMPLETED_SUCCESS);
   
-  // Calculate total votes helper for filtering
-  const getTotalVotes = (p: Plan) => {
-      return p.votes.star1 + p.votes.star2 + p.votes.star3 + p.votes.star4 + p.votes.star5;
-  };
-
-  const popularPlans = plans.filter(p => p.status === PlanStatus.ACTIVE && getTotalVotes(p) > 0).slice(0, 5);
+  // Get Popular Plans - Independent of main feed filter
+  // Sort by Likes to show truly hot items
+  const popularPlans = [...plans]
+    .filter(p => p.status === PlanStatus.ACTIVE)
+    .sort((a, b) => b.likes - a.likes)
+    .slice(0, 5);
 
   return (
     <div className="pb-24 bg-slate-50 min-h-screen">
@@ -180,7 +181,7 @@ export const Home: React.FC = () => {
         </section>
       </main>
 
-      {/* Guide Modal (Content kept same) */}
+      {/* Guide Modal */}
       {showGuide && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
             <div className="bg-white rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl">
@@ -209,15 +210,15 @@ export const Home: React.FC = () => {
                     <div className="flex items-start">
                         <div className="bg-brand-100 text-brand-600 font-bold rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0 mr-4">3</div>
                         <div>
-                            <h4 className="font-bold text-slate-800 mb-1">커뮤니티 투표</h4>
-                            <p className="text-sm text-slate-600">다른 유저들은 당신의 계획과 로그를 보고 '성공 가능성'을 별점(1~5점)으로 평가합니다.</p>
+                            <h4 className="font-bold text-slate-800 mb-1">커뮤니티 응원</h4>
+                            <p className="text-sm text-slate-600">다른 유저들은 당신의 계획과 로그를 보고 '좋아요'를 눌러 응원할 수 있습니다.</p>
                         </div>
                     </div>
                     <div className="flex items-start">
                         <div className="bg-brand-100 text-brand-600 font-bold rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0 mr-4">4</div>
                         <div>
-                            <h4 className="font-bold text-slate-800 mb-1">최종 검증</h4>
-                            <p className="text-sm text-slate-600">마감일이 지나면 2일간 '최종 검증 투표'가 열립니다. 여기서 높은 평가를 받아야 명예의 전당(성공)에 오릅니다.</p>
+                            <h4 className="font-bold text-slate-800 mb-1">명예의 전당</h4>
+                            <p className="text-sm text-slate-600">꾸준히 기록하고 많은 응원을 받아 목표를 달성하면 명예의 전당에 오를 수 있습니다.</p>
                         </div>
                     </div>
                     <div className="bg-slate-50 p-4 rounded-xl text-center">

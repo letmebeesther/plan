@@ -1,10 +1,11 @@
 
+
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getCurrentUser, getUserById, logout, toggleFollow } from '../services/authService';
 import { getUserPlans } from '../services/planService';
-import { Plan, PlanStatus, User, VoteStats } from '../types';
-import { Loader2, AlertCircle, Settings, LogOut, UserPlus, UserCheck } from 'lucide-react';
+import { Plan, PlanStatus, User } from '../types';
+import { Loader2, AlertCircle, Settings, LogOut, UserPlus, UserCheck, Heart } from 'lucide-react';
 
 export const Profile: React.FC = () => {
   const { userId } = useParams();
@@ -39,7 +40,6 @@ export const Profile: React.FC = () => {
     fetchData();
   }, [targetUserId, currentUser?.id]);
 
-  // ... handleFollowToggle, handleLogout logic kept same ...
   const handleFollowToggle = async () => {
       if (!currentUser || !profileUser) return;
       setFollowLoading(true);
@@ -78,24 +78,8 @@ export const Profile: React.FC = () => {
       return acc + (plan.milestones ? plan.milestones.filter(m => m.isCompleted).length : 0);
   }, 0);
   
-  // Calculate Trust Score (Average Rating / 5 * 100)
-  let trustScoreSum = 0;
-  let totalVotedPlans = 0;
-  
-  plans.forEach(p => {
-      const v = p.votes;
-      const count = v.star1 + v.star2 + v.star3 + v.star4 + v.star5;
-      if (count > 0) {
-          const sum = (v.star1 * 1) + (v.star2 * 2) + (v.star3 * 3) + (v.star4 * 4) + (v.star5 * 5);
-          const avg = sum / count;
-          trustScoreSum += avg;
-          totalVotedPlans++;
-      }
-  });
-  
-  // Trust score out of 100 (Average rating / 5 * 100)
-  const averageOverallRating = totalVotedPlans > 0 ? trustScoreSum / totalVotedPlans : 0;
-  const finalTrustScore = Math.round((averageOverallRating / 5) * 100);
+  // Calculate Total Likes Received
+  const totalLikes = plans.reduce((acc, plan) => acc + (plan.likes || 0), 0);
 
   const activePlans = plans.filter(p => p.status === PlanStatus.ACTIVE || p.status === PlanStatus.VERIFICATION_PENDING);
   const pastPlans = plans.filter(p => p.status === PlanStatus.COMPLETED_SUCCESS || p.status === PlanStatus.COMPLETED_FAIL || p.status === PlanStatus.FAILED_BY_ABANDONMENT);
@@ -155,8 +139,8 @@ export const Profile: React.FC = () => {
                     <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mt-1">팔로잉</span>
                 </div>
                 <div className="text-center">
-                    <span className="block font-bold text-2xl text-slate-900">{finalTrustScore}</span>
-                    <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mt-1">신뢰도</span>
+                    <span className="block font-bold text-2xl text-rose-500 flex items-center justify-center"><Heart size={16} className="mr-1 fill-rose-500"/>{totalLikes}</span>
+                    <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mt-1">총 응원</span>
                 </div>
             </div>
         </div>

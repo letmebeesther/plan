@@ -137,6 +137,12 @@ export const register = async (email: string, password: string, name: string, bi
 
 export const logout = () => {
   localStorage.removeItem(SESSION_KEY);
+  // Dispatch a custom event to notify App component to update state immediately
+  window.dispatchEvent(new Event('auth:logout'));
+  
+  // Force reset URL to home and reload to ensure clean state
+  // This addresses issues where the logout button might seem unresponsive
+  window.location.hash = '/';
   window.location.reload();
 };
 

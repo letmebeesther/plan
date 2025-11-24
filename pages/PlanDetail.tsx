@@ -1,11 +1,12 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { Plan, PlanStatus, ProgressLog, VoteStats } from '../types';
-import { Clock, CheckCircle, MessageSquare, Share2, AlertTriangle, ChevronLeft, Loader2, ImageIcon, Lock, Eye, UserPlus, UserCheck, Star } from 'lucide-react';
+import { Plan, PlanStatus, ProgressLog } from '../types';
+import { Clock, CheckCircle, MessageSquare, Share2, AlertTriangle, ChevronLeft, Loader2, ImageIcon, Lock, Eye, UserPlus, UserCheck, Heart } from 'lucide-react';
 import { LogModal } from '../components/LogModal';
 import { ViewLogModal } from '../components/ViewLogModal';
-import { subscribeToPlan, voteForPlan, updateMilestoneStatus, addProgressLog } from '../services/planService';
+import { subscribeToPlan, toggleLikePlan, updateMilestoneStatus, addProgressLog } from '../services/planService';
 import { getCurrentUser, toggleFollow, getUserById } from '../services/authService';
 
 const ACTION_TYPE_MAP: Record<string, string> = {
@@ -39,8 +40,6 @@ export const PlanDetail: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'milestones' | 'logs' | 'comments'>('milestones');
   const [isLogModalOpen, setIsLogModalOpen] = useState(false);
   const [selectedMilestoneIndex, setSelectedMilestoneIndex] = useState<number | null>(null);
-  const [userRating, setUserRating] = useState<number | null>(null);
-  const [hoverRating, setHoverRating] = useState<number | null>(null);
   
   // View Log Modal State
   const [selectedLog, setSelectedLog] = useState<ProgressLog | null>(null);
@@ -48,7 +47,6 @@ export const PlanDetail: React.FC = () => {
   
   // Follow State
   const [isFollowing, setIsFollowing] = useState(false);
-  
   const currentUser = getCurrentUser();
 
   useEffect(() => {
@@ -82,21 +80,14 @@ export const PlanDetail: React.FC = () => {
 
   const isVerificationPhase = plan.status === PlanStatus.VERIFICATION_PENDING;
   const isOwner = currentUser && plan.userId === currentUser.id;
+  const isLiked = currentUser ? (plan.likedBy || []).includes(currentUser.id) : false;
 
-  // Calculate Voting Stats
-  const votes = plan.votes || { star1: 0, star2: 0, star3: 0, star4: 0, star5: 0 };
-  const totalVotes = votes.star1 + votes.star2 + votes.star3 + votes.star4 + votes.star5;
-  const sumScore = (votes.star1 * 1) + (votes.star2 * 2) + (votes.star3 * 3) + (votes.star4 * 4) + (votes.star5 * 5);
-  const averageRating = totalVotes > 0 ? (sumScore / totalVotes).toFixed(1) : "0.0";
-
-  const handleVote = async (rating: number) => {
-    if (userRating) return;
-    try {
-        await voteForPlan(plan.id, rating);
-        setUserRating(rating);
-    } catch (e) {
-        alert("투표 중 오류가 발생했습니다.");
+  const handleLike = async () => {
+    if (!currentUser) {
+        alert("로그인이 필요합니다.");
+        return;
     }
+    await toggleLikePlan(plan.id, currentUser.id);
   };
 
   const handleFollowClick = async () => {
@@ -218,6 +209,9 @@ export const PlanDetail: React.FC = () => {
                     <button className="flex items-center hover:text-white transition-colors hover:bg-white/10 px-3 py-1 rounded-full">
                         <Share2 size={16} className="mr-1.5"/> 공유하기
                     </button>
+                    <div className="flex items-center text-rose-300">
+                        <Heart size={16} className="mr-1.5 fill-rose-300" /> {plan.likes}
+                    </div>
                 </div>
             </div>
         </div>
@@ -225,76 +219,34 @@ export const PlanDetail: React.FC = () => {
 
       <main className="max-w-4xl mx-auto px-4 py-6 -mt-8 relative z-10">
         
-        {/* VOTING SECTION */}
-        <div className="bg-white rounded-2xl shadow-xl p-6 mb-8 border-t-4 border-brand-500 overflow-hidden transform transition-all hover:shadow-2xl">
+        {/* Support Section (Replaces Voting) */}
+        <div className="bg-white rounded-2xl shadow-xl p-6 mb-8 border-t-4 border-rose-500 overflow-hidden transform transition-all hover:shadow-2xl">
             <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-extrabold text-slate-800 flex items-center">
-                    {isVerificationPhase ? (
-                        <>
-                            <AlertTriangle className="text-amber-500 mr-2 fill-amber-500" /> 최종 검증 투표
-                        </>
-                    ) : (
-                        <>
-                            <CheckCircle className="text-brand-500 mr-2 fill-brand-500" /> 성공 예측 투표
-                        </>
-                    )}
+                   <Heart className="text-rose-500 mr-2 fill-rose-500" /> 응원하기
                 </h2>
-                <span className="text-xs font-bold text-brand-600 bg-brand-50 px-3 py-1 rounded-full border border-brand-100">
-                    현재 {totalVotes}명 참여
+                <span className="text-xs font-bold text-rose-600 bg-rose-50 px-3 py-1 rounded-full border border-rose-100">
+                    현재 {plan.likes}명 응원 중
                 </span>
             </div>
 
             <p className="text-slate-600 mb-6 text-base leading-relaxed font-medium">
                 {isVerificationPhase 
-                    ? "이 도전이 성공했나요? 결과를 평가해주세요." 
-                    : "이 계획의 성공 가능성을 1점부터 5점까지 평가해주세요!"}
+                    ? "이 도전이 성공했다고 생각하시나요? 좋아요를 눌러주세요!" 
+                    : "이 도전이 성공할 수 있도록 좋아요로 응원해주세요!"}
             </p>
 
-            {/* Rating Display */}
-            <div className="mb-6 flex flex-col items-center justify-center bg-slate-50 p-4 rounded-xl border border-slate-100">
-                <div className="flex items-end mb-2">
-                    <span className="text-4xl font-extrabold text-slate-900 mr-2">{averageRating}</span>
-                    <span className="text-slate-400 font-bold mb-1">/ 5.0</span>
-                </div>
-                <div className="flex space-x-1">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                        <Star 
-                            key={star} 
-                            size={24} 
-                            className={`${Number(averageRating) >= star ? 'text-yellow-400 fill-yellow-400' : Number(averageRating) >= star - 0.5 ? 'text-yellow-400 fill-yellow-400 opacity-50' : 'text-slate-200 fill-slate-200'}`} 
-                        />
-                    ))}
-                </div>
-            </div>
-
-            {/* Interactive Star Voting */}
-            <div className="flex justify-center space-x-2 md:space-x-4">
-                {[1, 2, 3, 4, 5].map((star) => (
-                    <button
-                        key={star}
-                        disabled={userRating !== null}
-                        onClick={() => handleVote(star)}
-                        onMouseEnter={() => setHoverRating(star)}
-                        onMouseLeave={() => setHoverRating(null)}
-                        className="group transition-transform hover:scale-110 focus:outline-none disabled:cursor-default"
-                    >
-                        <Star 
-                            size={40} 
-                            className={`transition-colors duration-200 ${
-                                (hoverRating || userRating || 0) >= star 
-                                ? 'text-yellow-400 fill-yellow-400 drop-shadow-md' 
-                                : 'text-slate-200 fill-slate-200'
-                            }`}
-                        />
-                    </button>
-                ))}
-            </div>
-
-            {userRating && (
-                <div className="mt-6 text-center p-3 bg-green-50 text-green-700 rounded-lg font-bold animate-fade-in text-sm">
-                    {userRating}점을 주셨습니다! 소중한 의견 감사합니다.
-                </div>
-            )}
+            <button
+                onClick={handleLike}
+                className={`w-full py-4 rounded-xl font-bold text-lg flex items-center justify-center transition-all transform active:scale-95 ${
+                    isLiked 
+                    ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/30' 
+                    : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                }`}
+            >
+                <Heart size={24} className={`mr-2 ${isLiked ? 'fill-white' : ''}`} />
+                {isLiked ? "응원 완료!" : "응원하기 (좋아요)"}
+            </button>
         </div>
 
         {/* Main Content Card */}

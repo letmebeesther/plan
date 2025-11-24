@@ -1,8 +1,9 @@
 
+
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plan, PlanStatus, VoteStats } from '../types';
-import { Clock, MessageCircle, CheckCircle2, XCircle, Star } from 'lucide-react';
+import { Plan, PlanStatus } from '../types';
+import { Clock, MessageCircle, CheckCircle2, XCircle, Heart } from 'lucide-react';
 
 interface PlanCardProps {
   plan: Plan;
@@ -45,20 +46,6 @@ export const PlanCard: React.FC<PlanCardProps> = ({ plan, minimal = false }) => 
 
   const progress = calculateWeightedProgress();
 
-  // Calculate Average Rating
-  const calculateRating = (votes: VoteStats) => {
-      const total = votes.star1 + votes.star2 + votes.star3 + votes.star4 + votes.star5;
-      if (total === 0) return { average: 0, count: 0 };
-      
-      const sum = (votes.star1 * 1) + (votes.star2 * 2) + (votes.star3 * 3) + (votes.star4 * 4) + (votes.star5 * 5);
-      return {
-          average: (sum / total).toFixed(1),
-          count: total
-      };
-  };
-  
-  const { average, count } = calculateRating(plan.votes);
-
   return (
     <div className={`relative block bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-md transition-shadow group ${minimal ? 'w-64 flex-shrink-0' : 'w-full'}`}>
       {/* Card Image Area with Link to Plan Detail */}
@@ -77,12 +64,11 @@ export const PlanCard: React.FC<PlanCardProps> = ({ plan, minimal = false }) => 
           {timeLeft}
         </div>
 
-        {/* Vote Rating Overlay */}
+        {/* Likes Overlay */}
         <div className="absolute bottom-2 right-2 z-20">
             <div className="flex items-center bg-black/60 backdrop-blur-md rounded-lg overflow-hidden border border-white/10 shadow-lg px-2 py-0.5">
-                <Star size={10} className="mr-1 text-yellow-400 fill-yellow-400" />
-                <span className="text-white text-[10px] font-extrabold mr-1">{average}</span>
-                <span className="text-slate-400 text-[9px]">({count})</span>
+                <Heart size={10} className="mr-1 text-rose-500 fill-rose-500" />
+                <span className="text-white text-[10px] font-extrabold">{plan.likes}</span>
             </div>
         </div>
         
@@ -105,8 +91,8 @@ export const PlanCard: React.FC<PlanCardProps> = ({ plan, minimal = false }) => 
         
         <div className="flex items-center justify-between text-xs mb-1">
             <span className="text-slate-400">달성률 {progress}%</span>
-            <span className={`font-bold ${Number(average) >= 4.0 ? 'text-brand-600' : 'text-slate-400'}`}>
-                ★ {average} 점
+            <span className={`font-bold ${plan.likes >= 10 ? 'text-rose-500' : 'text-slate-400'}`}>
+                ♥ {plan.likes}
             </span>
         </div>
 
@@ -119,10 +105,7 @@ export const PlanCard: React.FC<PlanCardProps> = ({ plan, minimal = false }) => 
           <div className="flex space-x-3">
             <span className="flex items-center"><MessageCircle size={14} className="mr-1" /> {plan.logs.length} 로그</span>
           </div>
-           <div className="flex items-center text-slate-500">
-              <span className="bg-slate-100 px-1.5 py-0.5 rounded text-[10px] font-bold mr-1">참여</span>
-              {count}명
-           </div>
+           {/* If we want to show a participation-like metric, maybe just keep likes or something else. For now removing vote count */}
         </div>
       </Link>
     </div>

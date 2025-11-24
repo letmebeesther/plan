@@ -1,7 +1,6 @@
 
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
-import { getAnalytics, isSupported } from "firebase/analytics";
 
 // Your web app's Firebase configuration
 // Note: These are public identifiers, safe to be client-side
@@ -22,17 +21,7 @@ export const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 
 // Initialize Analytics (Safe mode)
+// Analytics is disabled to prevent 'installations/app-offline' errors in restricted network environments.
 export let analytics: any = null;
-
-// Use an async IIFE to handle analytics initialization safely
-(async () => {
-  try {
-    if (typeof window !== 'undefined' && await isSupported()) {
-      analytics = getAnalytics(app);
-    }
-  } catch (e) {
-    console.warn("Firebase Analytics initialization skipped:", e);
-  }
-})();
 
 export const firebaseInitialized = !!firebaseConfig.apiKey;

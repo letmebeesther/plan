@@ -1,4 +1,5 @@
 
+
 export enum PlanStatus {
   ACTIVE = 'ACTIVE',
   VERIFICATION_PENDING = 'VERIFICATION_PENDING', // The 2-day window after deadline
@@ -57,14 +58,6 @@ export interface ProgressLog {
   };
 }
 
-export interface VoteStats {
-  star1: number;
-  star2: number;
-  star3: number;
-  star4: number;
-  star5: number;
-}
-
 export interface Comment {
   id: string;
   userId: string;
@@ -88,8 +81,8 @@ export interface Plan {
   status: PlanStatus;
   milestones: Milestone[];
   logs: ProgressLog[];
-  votes: VoteStats;
   likes: number;
+  likedBy: string[]; // User IDs who liked this plan
   createdAt: string;
   verificationVoteStart?: string; // When the 2-day post-deadline vote starts
 }

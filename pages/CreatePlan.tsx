@@ -20,8 +20,8 @@ export const CreatePlan: React.FC = () => {
     endDate: '',
     category: [] as Category[],
     hashtags: '',
-    // Initialize with 5 items (Minimum requirement)
-    milestones: Array(5).fill({ title: '', dueDate: '', weight: 2 }) as Omit<Milestone, 'id' | 'isCompleted'>[]
+    // Initialize with 5 items (Minimum requirement) using Array.from to create distinct objects
+    milestones: Array.from({ length: 5 }, () => ({ title: '', dueDate: '', weight: 2 })) as Omit<Milestone, 'id' | 'isCompleted'>[]
   });
 
   useEffect(() => {
@@ -73,9 +73,12 @@ export const CreatePlan: React.FC = () => {
   };
 
   const updateMilestone = (index: number, field: string, value: any) => {
-    const newMilestones = [...formData.milestones];
-    (newMilestones[index] as any)[field] = value;
-    setFormData(prev => ({ ...prev, milestones: newMilestones }));
+    setFormData(prev => ({
+      ...prev,
+      milestones: prev.milestones.map((item, i) => 
+        i === index ? { ...item, [field]: value } : item
+      )
+    }));
   };
 
   const removeMilestone = (index: number) => {
